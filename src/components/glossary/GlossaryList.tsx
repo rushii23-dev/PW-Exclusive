@@ -47,7 +47,7 @@ export function GlossaryList({ entries }: { entries: GlossaryEntry[] }) {
           {filtered.map((entry) => (
             <div
               key={entry.term}
-              className="lift rounded-2xl border border-border bg-surface p-5"
+              className="lift sheet rounded-2xl border border-border p-5"
             >
               <dt className="font-display text-lg font-semibold capitalize">
                 {entry.term}
