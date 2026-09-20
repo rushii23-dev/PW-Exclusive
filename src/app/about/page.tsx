@@ -105,7 +105,7 @@ export default function AboutPage() {
         <p className="mt-12 text-center">
           <Link
             href="/analyze"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+            className="glow-primary inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-[0.98]"
           >
             Try it on a document
           </Link>
