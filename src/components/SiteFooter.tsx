@@ -21,16 +21,16 @@ export function SiteFooter() {
             </p>
           </div>
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm">
-            <Link className="text-muted-foreground hover:text-foreground" href="/analyze">
+            <Link className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline" href="/analyze">
               Analyze a document
             </Link>
-            <Link className="text-muted-foreground hover:text-foreground" href="/compare">
+            <Link className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline" href="/compare">
               Compare two documents
             </Link>
-            <Link className="text-muted-foreground hover:text-foreground" href="/glossary">
+            <Link className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline" href="/glossary">
               Legal glossary
             </Link>
-            <Link className="text-muted-foreground hover:text-foreground" href="/about">
+            <Link className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline" href="/about">
               How it works
             </Link>
           </nav>
