@@ -259,12 +259,13 @@
    SURFACE POLISH — the details that separate "styled" from "finished".
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Elevation, exposed as classes so components can pick a depth. */
-.elev-xs { box-shadow: var(--elev-xs); }
-.elev-sm { box-shadow: var(--elev-sm); }
-.elev-md { box-shadow: var(--elev-md); }
-.elev-lg { box-shadow: var(--elev-lg); }
-.glow-primary { box-shadow: var(--glow-primary); }
+/* Elevation, registered as real utilities so variants work: a card can ask
+   for hover:elev-sm, an input for focus:elev-sm. */
+@utility elev-xs { box-shadow: var(--elev-xs); }
+@utility elev-sm { box-shadow: var(--elev-sm); }
+@utility elev-md { box-shadow: var(--elev-md); }
+@utility elev-lg { box-shadow: var(--elev-lg); }
+@utility glow-primary { box-shadow: var(--glow-primary); }
 
 /* A sheet of paper: a faint top highlight makes the card look lit from
    above rather than pasted on. */
