@@ -19,7 +19,10 @@ export default async function AnalyzePage({ searchParams }: PageProps<"/analyze"
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
       <header className="mb-8">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Analyze a document</h1>
+        <p className="eyebrow">Plain-language analysis</p>
+        <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
+          Analyze a document
+        </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Paste the text of a lease, contract, offer or terms of service. You
           get a plain-language summary, every clause explained with its risks
