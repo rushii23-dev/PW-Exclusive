@@ -155,7 +155,7 @@ export function Analyzer({
             {pending ? "Analysing…" : "Analyze document"}
           </button>
 
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-muted">
+          <label className="elev-xs inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm font-medium transition-colors hover:border-border-strong hover:bg-muted">
             <FileUp className="size-4" aria-hidden />
             Upload .txt / .md
             <input
