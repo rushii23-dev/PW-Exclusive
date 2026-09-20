@@ -42,7 +42,7 @@ export function Tabs({ tabs, className }: { tabs: TabDef[]; className?: string }
         ref={listRef}
         role="tablist"
         aria-label="Analysis sections"
-        className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted p-1"
+        className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/70 p-1"
         onKeyDown={onKeyDown}
       >
         {tabs.map((tab) => {
@@ -60,7 +60,7 @@ export function Tabs({ tabs, className }: { tabs: TabDef[]; className?: string }
               className={cn(
                 "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
                 selected
-                  ? "bg-surface text-foreground shadow-sm"
+                  ? "elev-sm bg-surface-raised text-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
