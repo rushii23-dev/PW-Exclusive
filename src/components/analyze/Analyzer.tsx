@@ -119,7 +119,7 @@ export function Analyzer({
           maxLength={MAX_DOCUMENT_CHARS}
           rows={12}
           placeholder="Paste a lease, contract, offer letter or terms of service here…"
-          className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-4 font-mono text-[13px] leading-relaxed placeholder:font-sans placeholder:text-muted-foreground/70"
+          className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-4 font-mono text-[13px] leading-relaxed shadow-inner placeholder:font-sans placeholder:text-muted-foreground/70"
         />
         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
           <span aria-live="polite" className="tabular">
