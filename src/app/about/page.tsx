@@ -81,7 +81,7 @@ export default function AboutPage() {
       <Reveal>
         <section
           aria-labelledby="limits-heading"
-          className="mt-12 rounded-2xl border border-risk-medium/40 bg-risk-medium-soft/50 p-6"
+          className="elev-sm mt-12 rounded-2xl border border-risk-medium/40 bg-risk-medium-soft/60 p-6 sm:p-7"
         >
           <h2
             id="limits-heading"
