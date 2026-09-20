@@ -95,7 +95,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28">
           <div className="max-w-3xl">
-            <p className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-medium text-muted-foreground">
+            <p className="animate-fade-in-up elev-xs inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-3.5 py-1.5 text-xs font-medium tracking-tight text-muted-foreground backdrop-blur">
               <span
                 aria-hidden
                 className="animate-live-pulse size-2 rounded-full text-ok"
@@ -109,7 +109,7 @@ export default function HomePage() {
             >
               Understand what
               <br />
-              <span className="animate-gradient-pan bg-gradient-to-r from-primary via-accent-ink to-primary bg-clip-text text-transparent">
+              <span className="animate-gradient-pan text-gradient">
                 you&rsquo;re signing.
               </span>
             </h1>
@@ -128,7 +128,7 @@ export default function HomePage() {
             >
               <Link
                 href="/analyze"
-                className="group inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+                className="group glow-primary inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-[0.98]"
               >
                 Analyze a document
                 <ArrowRight
@@ -138,7 +138,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/analyze?sample=rental"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-6 py-3.5 text-sm font-semibold transition-colors hover:bg-muted"
+                className="sheet inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3.5 text-sm font-semibold transition-colors hover:bg-muted"
               >
                 <Sparkles className="size-4 text-accent-ink" aria-hidden />
                 See a sample analysis
@@ -147,11 +147,11 @@ export default function HomePage() {
           </div>
 
           <dl
-            className="animate-fade-in-up mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4"
+            className="animate-fade-in-up elev-md mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4"
             style={{ animationDelay: "0.32s" }}
           >
             {STATS.map((stat) => (
-              <div key={stat.label} className="bg-surface px-5 py-5">
+              <div key={stat.label} className="bg-surface-raised px-5 py-5">
                 <dt className="order-last mt-1 text-xs text-muted-foreground">
                   {stat.label}
                 </dt>
@@ -177,9 +177,9 @@ export default function HomePage() {
             <Reveal key={feature.title} delay={(i % 3) * 0.08}>
               <Link
                 href={feature.href}
-                className="lift group block h-full rounded-2xl border border-border bg-surface p-6"
+                className="lift sheet group block h-full rounded-2xl border border-border p-6"
               >
-                <span className="grid size-11 place-items-center rounded-xl bg-primary-soft text-primary-strong">
+                <span className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-primary-soft to-accent-soft text-primary-strong ring-1 ring-border">
                   <feature.icon className="size-5" aria-hidden />
                 </span>
                 <h3 className="mt-4 font-sans text-base font-semibold tracking-tight">

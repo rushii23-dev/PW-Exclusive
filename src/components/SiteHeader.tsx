@@ -19,16 +19,16 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl backdrop-saturate-150">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
           className="flex items-center gap-2.5 font-semibold tracking-tight"
         >
-          <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="glow-primary grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary-strong to-primary text-primary-foreground">
             <FileSearch className="size-5" aria-hidden />
           </span>
-          <span className="font-display text-lg">ClearClause</span>
+          <span className="font-display text-lg tracking-tight">ClearClause</span>
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
@@ -52,7 +52,7 @@ export function SiteHeader() {
           })}
           <Link
             href="/analyze"
-            className="ml-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-[0.98]"
+            className="glow-primary ml-2 whitespace-nowrap rounded-lg bg-gradient-to-br from-primary-strong to-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-[0.98]"
           >
             Try it
           </Link>
