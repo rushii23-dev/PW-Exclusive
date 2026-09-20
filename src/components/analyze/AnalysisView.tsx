@@ -281,7 +281,7 @@ export function AnalysisView({
       {/* ── Header ──────────────────────────────────────────────────── */}
       <section
         aria-labelledby="result-heading"
-        className="rounded-2xl border border-border bg-surface p-6"
+        className="sheet rounded-2xl border border-border p-6"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -312,7 +312,7 @@ export function AnalysisView({
       {/* ── Summary ─────────────────────────────────────────────────── */}
       <section
         aria-labelledby="summary-heading"
-        className="rounded-2xl border border-border bg-surface p-6"
+        className="sheet rounded-2xl border border-border p-6"
       >
         <h2 id="summary-heading" className="font-sans text-base font-semibold">
           In plain language
