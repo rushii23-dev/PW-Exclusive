@@ -31,7 +31,7 @@ export function GlossaryList({ entries }: { entries: GlossaryEntry[] }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search a term — try “indemnify” or “holdover”…"
-        className="w-full max-w-md rounded-xl border border-border bg-surface px-4 py-3 text-sm placeholder:text-muted-foreground/70"
+        className="elev-xs w-full max-w-md rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm transition-shadow placeholder:text-muted-foreground/70 focus:elev-sm"
       />
       <p aria-live="polite" className="mt-2 text-xs text-muted-foreground">
         {filtered.length} of {entries.length} terms
