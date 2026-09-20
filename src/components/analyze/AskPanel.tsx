@@ -110,7 +110,7 @@ export function AskPanel({ documentText }: { documentText: string }) {
 
         {exchanges.map((exchange, i) => (
           <div key={`${i}-${exchange.question}`} className="space-y-3">
-            <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+            <p className="elev-xs ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-primary-strong to-primary px-4 py-2.5 text-sm text-primary-foreground">
               {exchange.question}
             </p>
             {exchange.answer === null && !exchange.error && (
