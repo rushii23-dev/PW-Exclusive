@@ -3,11 +3,13 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-surface">
+    <footer className="border-t border-border bg-surface-raised">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-md space-y-3">
-            <p className="font-display text-lg font-semibold">ClearClause</p>
+            <p className="font-display text-lg font-semibold tracking-tight">
+              ClearClause
+            </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Plain-language analysis of legal documents. Everything is
               processed in memory and forgotten when the response is sent —
