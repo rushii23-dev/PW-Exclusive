@@ -99,7 +99,7 @@ export function Analyzer({
 
   return (
     <div className="space-y-8">
-      <section aria-labelledby="input-heading" className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <section aria-labelledby="input-heading" className="sheet rounded-2xl border border-border p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="input-heading" className="font-sans text-base font-semibold">
             Your document
