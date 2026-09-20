@@ -12,7 +12,10 @@ export default function ComparePage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <header className="mb-8">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Compare two documents</h1>
+        <p className="eyebrow">Side by side</p>
+        <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
+          Compare two documents
+        </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Two offers on the table, or a new draft against the old one. See which
           topics each covers, which traps only one contains, and how the
