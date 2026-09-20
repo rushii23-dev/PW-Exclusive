@@ -7,61 +7,93 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  --background: oklch(0.985 0.006 85);
-  --surface: oklch(1 0 0);
-  --surface-raised: oklch(0.995 0.004 85);
-  --foreground: oklch(0.22 0.02 250);
-  --muted: oklch(0.94 0.008 85);
-  --muted-foreground: oklch(0.45 0.02 250);
-  --border: oklch(0.88 0.012 85);
-  --primary: oklch(0.44 0.09 195);
-  --primary-strong: oklch(0.36 0.08 195);
-  --primary-foreground: oklch(0.98 0.005 195);
-  --primary-soft: oklch(0.95 0.025 195);
-  --accent: oklch(0.72 0.13 70);
-  --accent-soft: oklch(0.95 0.045 85);
-  --accent-ink: oklch(0.45 0.11 70);
+  /* Warm ivory paper, deep ink, a jewel-green primary and a brass accent.
+     The page is never flat white: the background carries a faint warmth so
+     white cards read as raised sheets on a desk. */
+  --background: oklch(0.973 0.012 83);
+  --surface: oklch(0.995 0.005 85);
+  --surface-raised: oklch(1 0 0);
+  --foreground: oklch(0.2 0.028 248);
+  --muted: oklch(0.945 0.014 83);
+  --muted-foreground: oklch(0.47 0.026 250);
+  --border: oklch(0.885 0.016 83);
+  --border-strong: oklch(0.82 0.022 83);
+  --primary: oklch(0.42 0.1 191);
+  --primary-strong: oklch(0.33 0.088 193);
+  --primary-foreground: oklch(0.985 0.008 190);
+  --primary-soft: oklch(0.945 0.035 190);
+  --accent: oklch(0.72 0.13 72);
+  --accent-soft: oklch(0.948 0.05 84);
+  --accent-ink: oklch(0.47 0.11 66);
 
-  --risk-high: oklch(0.5 0.19 20);
-  --risk-high-soft: oklch(0.95 0.025 20);
-  --risk-medium: oklch(0.55 0.13 65);
-  --risk-medium-soft: oklch(0.96 0.035 85);
-  --risk-low: oklch(0.48 0.06 250);
-  --risk-low-soft: oklch(0.95 0.012 250);
-  --ok: oklch(0.52 0.1 155);
-  --ok-soft: oklch(0.95 0.03 155);
+  --risk-high: oklch(0.49 0.19 22);
+  --risk-high-soft: oklch(0.955 0.03 24);
+  --risk-medium: oklch(0.55 0.14 66);
+  --risk-medium-soft: oklch(0.96 0.042 84);
+  --risk-low: oklch(0.47 0.07 248);
+  --risk-low-soft: oklch(0.95 0.018 248);
+  --ok: oklch(0.5 0.11 158);
+  --ok-soft: oklch(0.95 0.035 158);
 
-  --ring: oklch(0.5 0.1 195);
-  --radius: 0.75rem;
+  --ring: oklch(0.5 0.1 191);
+  --radius: 0.875rem;
+
+  /* Elevation as a scale, tinted with the ink colour instead of pure black —
+     grey shadows on warm paper look like dirt. */
+  --elev-xs: 0 1px 2px oklch(0.3 0.04 250 / 0.06);
+  --elev-sm: 0 1px 2px oklch(0.3 0.04 250 / 0.05), 0 2px 8px -4px oklch(0.3 0.04 250 / 0.1);
+  --elev-md: 0 2px 4px oklch(0.3 0.04 250 / 0.05), 0 10px 26px -12px oklch(0.3 0.04 250 / 0.22);
+  --elev-lg: 0 4px 8px oklch(0.3 0.04 250 / 0.05), 0 22px 50px -20px oklch(0.3 0.04 250 / 0.3);
+  --glow-primary: 0 14px 40px -16px oklch(0.42 0.1 191 / 0.55);
+
+  /* Ambient wash painted behind the whole page. */
+  --page-wash:
+    radial-gradient(70rem 40rem at 12% -8%, oklch(0.9 0.05 190 / 0.5), transparent 60%),
+    radial-gradient(56rem 36rem at 92% 4%, oklch(0.93 0.06 84 / 0.55), transparent 62%);
+  --grain-opacity: 0.035;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.17 0.015 250);
-    --surface: oklch(0.21 0.018 250);
-    --surface-raised: oklch(0.24 0.02 250);
-    --foreground: oklch(0.93 0.008 85);
-    --muted: oklch(0.26 0.02 250);
-    --muted-foreground: oklch(0.72 0.015 250);
-    --border: oklch(0.32 0.02 250);
-    --primary: oklch(0.75 0.1 190);
-    --primary-strong: oklch(0.82 0.1 190);
-    --primary-foreground: oklch(0.16 0.02 250);
-    --primary-soft: oklch(0.28 0.045 195);
-    --accent: oklch(0.78 0.13 75);
-    --accent-soft: oklch(0.3 0.05 75);
-    --accent-ink: oklch(0.83 0.12 80);
+    /* Midnight ink rather than grey: a blue-green base, surfaces stepped so
+       three levels of depth stay distinguishable without borders shouting. */
+    --background: oklch(0.155 0.022 252);
+    --surface: oklch(0.2 0.025 252);
+    --surface-raised: oklch(0.235 0.027 252);
+    --foreground: oklch(0.94 0.012 84);
+    --muted: oklch(0.26 0.026 252);
+    --muted-foreground: oklch(0.74 0.02 250);
+    --border: oklch(0.32 0.026 252);
+    --border-strong: oklch(0.42 0.03 252);
+    --primary: oklch(0.79 0.11 186);
+    --primary-strong: oklch(0.86 0.1 186);
+    --primary-foreground: oklch(0.15 0.025 252);
+    --primary-soft: oklch(0.29 0.055 192);
+    --accent: oklch(0.81 0.12 78);
+    --accent-soft: oklch(0.31 0.055 76);
+    --accent-ink: oklch(0.86 0.11 82);
 
-    --risk-high: oklch(0.72 0.16 22);
-    --risk-high-soft: oklch(0.3 0.06 20);
-    --risk-medium: oklch(0.78 0.13 75);
-    --risk-medium-soft: oklch(0.3 0.05 75);
-    --risk-low: oklch(0.75 0.05 250);
-    --risk-low-soft: oklch(0.29 0.025 250);
-    --ok: oklch(0.75 0.11 155);
-    --ok-soft: oklch(0.28 0.045 155);
+    --risk-high: oklch(0.73 0.16 24);
+    --risk-high-soft: oklch(0.31 0.07 22);
+    --risk-medium: oklch(0.8 0.13 76);
+    --risk-medium-soft: oklch(0.31 0.055 76);
+    --risk-low: oklch(0.77 0.055 250);
+    --risk-low-soft: oklch(0.29 0.03 250);
+    --ok: oklch(0.77 0.12 158);
+    --ok-soft: oklch(0.29 0.05 158);
 
-    --ring: oklch(0.75 0.1 190);
+    --ring: oklch(0.79 0.11 186);
+
+    --elev-xs: 0 1px 2px oklch(0 0 0 / 0.3);
+    --elev-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 2px 8px -4px oklch(0 0 0 / 0.5);
+    --elev-md: 0 2px 4px oklch(0 0 0 / 0.35), 0 10px 26px -12px oklch(0 0 0 / 0.65);
+    --elev-lg: 0 4px 8px oklch(0 0 0 / 0.4), 0 22px 50px -20px oklch(0 0 0 / 0.75);
+    --glow-primary: 0 14px 44px -16px oklch(0.79 0.11 186 / 0.45);
+
+    --page-wash:
+      radial-gradient(64rem 38rem at 8% -12%, oklch(0.45 0.09 192 / 0.28), transparent 60%),
+      radial-gradient(52rem 34rem at 96% 0%, oklch(0.45 0.06 78 / 0.16), transparent 58%);
+    --grain-opacity: 0.05;
   }
 }
 
@@ -73,6 +105,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
   --color-primary-strong: var(--primary-strong);
   --color-primary-foreground: var(--primary-foreground);
@@ -89,33 +122,96 @@
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-sans-stack), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-stack), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-display-stack), ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.85);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.5);
-  --radius-2xl: calc(var(--radius) * 2);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.9);
 }
 
 @layer base {
   * {
     border-color: var(--border);
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    background: var(--background);
+    position: relative;
+    background-color: var(--background);
+    background-image: var(--page-wash);
+    background-attachment: fixed;
     color: var(--foreground);
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.65;
+    letter-spacing: -0.006em;
+    font-feature-settings: "cv05" 1, "ss01" 1;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+
+  /* A whisper of film grain over the whole page. Flat gradients look like
+     software; grain looks like paper under a lamp. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Headlines: the same family the interface speaks, only tighter and
+     heavier. Expensive type is about fit and weight, not flourish — so the
+     tracking closes up as the size grows and nothing calls attention to the
+     letterforms themselves. */
   h1, h2, h3 {
     font-family: var(--font-display);
+    font-weight: 620;
     text-wrap: balance;
+    letter-spacing: -0.025em;
+    line-height: 1.14;
+  }
+  h1 {
+    font-size: clamp(2.35rem, 1.4rem + 3.6vw, 4.1rem);
+    font-weight: 660;
+    letter-spacing: -0.04em;
+    line-height: 1.06;
+  }
+  h2 {
+    font-size: clamp(1.7rem, 1.25rem + 1.7vw, 2.4rem);
+    letter-spacing: -0.032em;
+  }
+  h3 {
+    font-size: clamp(1.18rem, 1.05rem + 0.5vw, 1.4rem);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  h4 {
+    letter-spacing: -0.014em;
+  }
+  p, li {
+    text-wrap: pretty;
+  }
+  /* Contract text is evidence: monospace, roomy, never ligatured into
+     something the reader can't match against their own document. */
+  pre, code, kbd, samp, textarea.font-mono, .font-mono {
+    font-variant-ligatures: none;
     letter-spacing: -0.01em;
   }
   ::selection {
     background: var(--primary-soft);
+    color: var(--foreground);
   }
   /* One visible focus style everywhere; keyboard users must never guess. */
   :focus-visible {
@@ -191,9 +287,81 @@
     box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.3s ease;
 }
+.lift {
+  box-shadow: var(--elev-xs);
+}
 .lift:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 30px -12px oklch(0.3 0.05 250 / 0.25);
+  box-shadow: var(--elev-lg);
+  border-color: var(--border-strong);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SURFACE POLISH — the details that separate "styled" from "finished".
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Elevation, exposed as classes so components can pick a depth. */
+.elev-xs { box-shadow: var(--elev-xs); }
+.elev-sm { box-shadow: var(--elev-sm); }
+.elev-md { box-shadow: var(--elev-md); }
+.elev-lg { box-shadow: var(--elev-lg); }
+.glow-primary { box-shadow: var(--glow-primary); }
+
+/* A sheet of paper: a faint top highlight makes the card look lit from
+   above rather than pasted on. */
+.sheet {
+  background:
+    linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+    linear-gradient(
+      160deg,
+      oklch(1 0 0 / 0.9),
+      oklch(1 0 0 / 0) 45%
+    ) border-box;
+  box-shadow: var(--elev-sm);
+}
+@media (prefers-color-scheme: dark) {
+  .sheet {
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(160deg, oklch(1 0 0 / 0.12), oklch(1 0 0 / 0) 45%) border-box;
+  }
+}
+
+/* Headline ink that shifts from primary to brass. */
+.text-gradient {
+  background-image: linear-gradient(
+    100deg,
+    var(--primary-strong) 0%,
+    var(--primary) 38%,
+    var(--accent-ink) 72%,
+    var(--primary-strong) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Small caps eyebrow above a section title. */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* A hairline rule that fades out at both ends instead of stopping dead. */
+.rule-fade {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--border-strong) 20%,
+    var(--border-strong) 80%,
+    transparent
+  );
 }
 
 /* Skeleton shimmer while an analysis is running. */

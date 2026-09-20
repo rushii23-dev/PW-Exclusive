@@ -1,25 +1,30 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/* Three voices, each with a job, and none of them showy. Inter reads the
+   interface, Inter Tight sets headlines at a tighter, more confident fit,
+   JetBrains holds the contract text the reader is checking word for word. */
+const sans = Inter({
+  variable: "--font-sans-stack",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Inter_Tight({
+  variable: "--font-display-stack",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const mono = JetBrains_Mono({
+  variable: "--font-mono-stack",
   subsets: ["latin"],
-  axes: ["opsz"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${sans.variable} ${mono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* First tab stop on every page: straight to the content. */}
