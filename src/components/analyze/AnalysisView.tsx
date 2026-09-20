@@ -140,7 +140,7 @@ function ActionPlanTab({ analysis }: { analysis: Analysis }) {
               <li key={item.text}>
                 <label
                   className={cn(
-                    "flex cursor-pointer gap-3 rounded-xl border border-border bg-surface p-4 transition-opacity",
+                    "elev-xs flex cursor-pointer gap-3 rounded-xl border border-border bg-surface-raised p-4 transition-opacity hover:border-border-strong",
                     done.has(i) && "opacity-60",
                   )}
                 >
