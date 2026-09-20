@@ -63,8 +63,8 @@ export default function AboutPage() {
       <div className="space-y-4">
         {PRINCIPLES.map((p, i) => (
           <Reveal key={p.title} delay={Math.min(i * 0.06, 0.2)}>
-            <section className="flex gap-4 rounded-2xl border border-border bg-surface p-6">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary-strong">
+            <section className="sheet flex gap-4 rounded-2xl border border-border p-6">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary-soft to-accent-soft text-primary-strong ring-1 ring-border">
                 <p.icon className="size-5" aria-hidden />
               </span>
               <div>
