@@ -76,7 +76,7 @@ export function AskPanel({ documentText }: { documentText: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface">
+    <div className="sheet rounded-2xl border border-border">
       <div
         ref={logRef}
         aria-live="polite"
