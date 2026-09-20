@@ -171,13 +171,13 @@ export function AskPanel({ documentText }: { documentText: string }) {
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={500}
           placeholder="e.g. How much notice do I have to give?"
-          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground/70"
+          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm shadow-inner transition-colors placeholder:text-muted-foreground/70 focus:border-border-strong"
           disabled={pending}
         />
         <button
           type="submit"
           disabled={pending || question.trim().length < 3}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
         >
           Ask
           <CornerDownLeft className="size-4" aria-hidden />
