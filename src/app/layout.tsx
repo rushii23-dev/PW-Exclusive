@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 
 import { SiteFooter } from "@/components/SiteFooter";
@@ -34,6 +34,13 @@ export const metadata: Metadata = {
   },
   description:
     "Paste any contract and get a plain-language breakdown: what each clause means, where the risks are, and what to ask before you sign. Nothing is stored.",
+};
+
+/* One theme only: tell the browser so its own chrome — scrollbars, form
+   controls, the address bar on mobile — matches the page. */
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#f7f3ec",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
