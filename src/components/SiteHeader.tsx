@@ -74,7 +74,7 @@ export function SiteHeader() {
         <nav
           id="mobile-nav"
           aria-label="Main"
-          className="border-t border-border bg-background px-4 py-3 sm:hidden"
+          className="elev-sm border-t border-border bg-surface-raised px-4 py-3 sm:hidden"
         >
           <ul className="flex flex-col gap-1">
             {NAV.map((item) => (
@@ -84,7 +84,7 @@ export function SiteHeader() {
                   aria-current={pathname.startsWith(item.href) ? "page" : undefined}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "block rounded-lg px-3 py-2.5 text-sm font-medium",
+                    "block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     pathname.startsWith(item.href)
                       ? "bg-primary-soft text-primary-strong"
                       : "text-muted-foreground hover:bg-muted",
