@@ -35,7 +35,8 @@ export function SiteFooter() {
             </Link>
           </nav>
         </div>
-        <p className="mt-8 border-t border-border pt-6 text-xs leading-relaxed text-muted-foreground">
+        <hr className="rule-fade mt-8" />
+        <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
           ClearClause provides information to help you understand documents. It
           is not a law firm, does not provide legal advice, and is not a
           substitute for a qualified professional. For decisions that matter,
