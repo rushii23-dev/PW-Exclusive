@@ -154,7 +154,7 @@ export function Comparer() {
             {/* ── Verdicts ────────────────────────────────────────── */}
             <section
               aria-labelledby="verdict-heading"
-              className="rounded-2xl border border-border bg-surface p-6"
+              className="sheet rounded-2xl border border-border p-6"
             >
               <h2 id="verdict-heading" className="font-sans text-base font-semibold">
                 The comparison in short
@@ -203,7 +203,7 @@ export function Comparer() {
             {/* ── Findings diff ───────────────────────────────────── */}
             <section
               aria-labelledby="diff-heading"
-              className="rounded-2xl border border-border bg-surface p-6"
+              className="sheet rounded-2xl border border-border p-6"
             >
               <h2 id="diff-heading" className="font-sans text-base font-semibold">
                 Flags, side by side
@@ -302,7 +302,7 @@ export function Comparer() {
             {result.comparison.numbers.length > 0 && (
               <section
                 aria-labelledby="numbers-heading"
-                className="rounded-2xl border border-border bg-surface p-6"
+                className="sheet rounded-2xl border border-border p-6"
               >
                 <h2 id="numbers-heading" className="font-sans text-base font-semibold">
                   The numbers, extracted
