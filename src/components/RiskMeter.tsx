@@ -17,7 +17,7 @@ export function RiskMeter({ profile, total }: { profile: RiskProfile; total: num
     <div>
       <div
         aria-hidden
-        className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full"
+        className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-muted p-px ring-1 ring-border"
       >
         {segments.map((s, i) => (
           <div
