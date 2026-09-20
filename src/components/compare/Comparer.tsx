@@ -26,7 +26,7 @@ function DocumentInput({
 }) {
   const inputId = `doc-${slot}`;
   return (
-    <div className="flex-1 rounded-2xl border border-border bg-surface p-4">
+    <div className="sheet flex-1 rounded-2xl border border-border p-4">
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={inputId} className="text-sm font-semibold">
           Document {slot}
@@ -60,7 +60,7 @@ function DocumentInput({
         maxLength={MAX_DOCUMENT_CHARS}
         rows={9}
         placeholder={`Paste document ${slot} here…`}
-        className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-3.5 font-mono text-[13px] leading-relaxed placeholder:font-sans placeholder:text-muted-foreground/70"
+        className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-3.5 font-mono text-[13px] leading-relaxed shadow-inner placeholder:font-sans placeholder:text-muted-foreground/70"
       />
     </div>
   );
