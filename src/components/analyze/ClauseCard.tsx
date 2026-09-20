@@ -18,7 +18,7 @@ export function ClauseCard({ clause }: { clause: Clause }) {
   return (
     <article
       className={cn(
-        "print-atomic rounded-2xl border bg-surface p-5",
+        "print-atomic elev-xs rounded-2xl border bg-surface-raised p-5 transition-shadow hover:elev-sm",
         clause.risk === "high" ? "border-risk-high/40" : "border-border",
       )}
     >
