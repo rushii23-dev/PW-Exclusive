@@ -13,7 +13,8 @@ export default function GlossaryPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <header className="mb-8">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Legal glossary</h1>
+        <p className="eyebrow">Reference</p>
+        <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Legal glossary</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           {GLOSSARY.length} terms defined by what they do to you, not by their
           Latin. The same definitions appear inline wherever a document you
