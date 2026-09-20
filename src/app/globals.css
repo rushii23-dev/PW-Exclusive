@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — warm paper, ink, and teal.
-   Light and dark are both defined in oklch so contrast stays measurable;
-   every foreground/background pair here clears WCAG AA.
+   DESIGN TOKENS — warm paper, ink, jewel green and brass.
+   One light theme, defined in oklch so contrast stays measurable; every
+   foreground/background pair here clears WCAG AA.
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -53,50 +53,6 @@
   --grain-opacity: 0.035;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Midnight ink rather than grey: a blue-green base, surfaces stepped so
-       three levels of depth stay distinguishable without borders shouting. */
-    --background: oklch(0.155 0.022 252);
-    --surface: oklch(0.2 0.025 252);
-    --surface-raised: oklch(0.235 0.027 252);
-    --foreground: oklch(0.94 0.012 84);
-    --muted: oklch(0.26 0.026 252);
-    --muted-foreground: oklch(0.74 0.02 250);
-    --border: oklch(0.32 0.026 252);
-    --border-strong: oklch(0.42 0.03 252);
-    --primary: oklch(0.79 0.11 186);
-    --primary-strong: oklch(0.86 0.1 186);
-    --primary-foreground: oklch(0.15 0.025 252);
-    --primary-soft: oklch(0.29 0.055 192);
-    --accent: oklch(0.81 0.12 78);
-    --accent-soft: oklch(0.31 0.055 76);
-    --accent-ink: oklch(0.86 0.11 82);
-
-    --risk-high: oklch(0.73 0.16 24);
-    --risk-high-soft: oklch(0.31 0.07 22);
-    --risk-medium: oklch(0.8 0.13 76);
-    --risk-medium-soft: oklch(0.31 0.055 76);
-    --risk-low: oklch(0.77 0.055 250);
-    --risk-low-soft: oklch(0.29 0.03 250);
-    --ok: oklch(0.77 0.12 158);
-    --ok-soft: oklch(0.29 0.05 158);
-
-    --ring: oklch(0.79 0.11 186);
-
-    --elev-xs: 0 1px 2px oklch(0 0 0 / 0.3);
-    --elev-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 2px 8px -4px oklch(0 0 0 / 0.5);
-    --elev-md: 0 2px 4px oklch(0 0 0 / 0.35), 0 10px 26px -12px oklch(0 0 0 / 0.65);
-    --elev-lg: 0 4px 8px oklch(0 0 0 / 0.4), 0 22px 50px -20px oklch(0 0 0 / 0.75);
-    --glow-primary: 0 14px 44px -16px oklch(0.79 0.11 186 / 0.45);
-
-    --page-wash:
-      radial-gradient(64rem 38rem at 8% -12%, oklch(0.45 0.09 192 / 0.28), transparent 60%),
-      radial-gradient(52rem 34rem at 96% 0%, oklch(0.45 0.06 78 / 0.16), transparent 58%);
-    --grain-opacity: 0.05;
-  }
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
@@ -137,6 +93,9 @@
     border-color: var(--border);
   }
   html {
+    /* Light only — scrollbars, form controls and the browser's own chrome
+       follow the page instead of the operating system. */
+    color-scheme: light;
     scroll-behavior: smooth;
   }
   body {
@@ -318,13 +277,6 @@
       oklch(1 0 0 / 0) 45%
     ) border-box;
   box-shadow: var(--elev-sm);
-}
-@media (prefers-color-scheme: dark) {
-  .sheet {
-    background:
-      linear-gradient(var(--surface), var(--surface)) padding-box,
-      linear-gradient(160deg, oklch(1 0 0 / 0.12), oklch(1 0 0 / 0) 45%) border-box;
-  }
 }
 
 /* Headline ink that shifts from primary to brass. */
