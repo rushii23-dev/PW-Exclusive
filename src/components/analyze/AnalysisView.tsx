@@ -110,7 +110,7 @@ function ActionPlanTab({ analysis }: { analysis: Analysis }) {
             <button
               type="button"
               onClick={copyAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+              className="elev-xs inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold transition-colors hover:border-border-strong hover:bg-muted"
             >
               {copied ? (
                 <Check className="size-3.5 text-ok" aria-hidden />
@@ -122,7 +122,7 @@ function ActionPlanTab({ analysis }: { analysis: Analysis }) {
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+              className="elev-xs inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold transition-colors hover:border-border-strong hover:bg-muted"
             >
               <Printer className="size-3.5" aria-hidden />
               Print / save PDF
