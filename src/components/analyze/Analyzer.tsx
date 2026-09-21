@@ -8,6 +8,7 @@ import { GeminiBadge } from "@/components/ai/GeminiBadge";
 import { LanguagePicker } from "@/components/ai/LanguagePicker";
 import { AnalysisView } from "@/components/analyze/AnalysisView";
 import type { AiBrief } from "@/lib/ai/brief";
+import { languageName, type LanguageCode } from "@/lib/ai/languages";
 import { postJson } from "@/lib/client/api";
 import { formatCount, MAX_DOCUMENT_CHARS, type Analysis } from "@/lib/engine";
 import { SAMPLES, type SampleDocument } from "@/lib/samples";
@@ -60,6 +61,7 @@ export function Analyzer({
   const [dragging, setDragging] = useState(false);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [analyzedText, setAnalyzedText] = useState("");
+  const [analyzedLanguage, setAnalyzedLanguage] = useState<LanguageCode>("en");
   const resultRef = useRef<HTMLDivElement>(null);
   const autoRan = useRef(false);
 
@@ -82,6 +84,7 @@ export function Analyzer({
       }
       setResult(result.data);
       setAnalyzedText(trimmed);
+      setAnalyzedLanguage(language);
       requestAnimationFrame(() =>
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
       );
@@ -285,9 +288,31 @@ export function Analyzer({
       <div ref={resultRef} aria-live="polite">
         {pending && !result && (
           <div className="space-y-4" aria-label="Analysing the document">
+            {aiStatus.configured && (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
+                Reading every clause, then asking Gemini to explain it…
+              </p>
+            )}
             <div className="skeleton h-36 w-full" />
             <div className="skeleton h-24 w-full" />
             <div className="skeleton h-56 w-full" />
+          </div>
+        )}
+        {result && aiStatus.configured && result.ai.used && analyzedLanguage !== language && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary-strong">
+            <span>
+              This brief is in {languageName(analyzedLanguage)}. Want it in {languageName(language)}?
+            </span>
+            <button
+              type="button"
+              onClick={() => analyze(analyzedText)}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-surface-raised px-3 py-1.5 text-xs font-semibold ring-1 ring-primary/20 transition-colors hover:bg-surface disabled:opacity-60"
+            >
+              {pending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
+              Rewrite in {languageName(language)}
+            </button>
           </div>
         )}
         {result && (
