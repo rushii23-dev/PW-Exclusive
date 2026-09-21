@@ -109,7 +109,7 @@ gcloud run deploy clearclause --source . --region asia-south1 \
 | `POST /api/extract` | Text from PDF, Word, image or text uploads (≤ 4 MB) |
 | `GET /api/health` | Liveness and whether Gemini is configured (never the key) |
 
-All POST routes accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
+The AI routes (`analyze`, `ask`, `explain`, `options`, `compare`) accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
 
 ## Tech
 
