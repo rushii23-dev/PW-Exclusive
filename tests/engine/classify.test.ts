@@ -81,3 +81,17 @@ describe("LEXICON hygiene", () => {
     }
   });
 });
+
+describe("paying-guest wording", () => {
+  it("flags entry to a room at any time", () => {
+    const { findings } = classifyClause("The Owner may enter the room at any time for inspection.");
+    expect(findings.map((f) => f.ruleId)).toContain("entry-without-notice");
+  });
+
+  it("flags an owner who may end a licence at any time", () => {
+    const { findings } = classifyClause(
+      "The Owner may terminate this licence at any time by giving seven (7) days notice.",
+    );
+    expect(findings.map((f) => f.ruleId)).toContain("unilateral-termination");
+  });
+});
