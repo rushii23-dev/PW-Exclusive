@@ -1,7 +1,10 @@
 import {
   ArrowRight,
   BookOpen,
+  Compass,
   FileSearch,
+  GitCompareArrows,
+  Languages,
   ListChecks,
   MessageCircleQuestion,
   Scale,
@@ -12,17 +15,17 @@ import {
 import Link from "next/link";
 
 import { Reveal } from "@/components/motion/Reveal";
+import { LANGUAGES } from "@/lib/ai/languages";
 import { GLOSSARY } from "@/lib/engine";
 import { LEXICON } from "@/lib/engine/lexicon";
-import { SAMPLES } from "@/lib/samples";
 
 /* Every number on this page is computed from the code that ships. If the
    lexicon grows, the page grows with it; nothing here can go stale or be
    invented. */
 const STATS = [
-  { value: LEXICON.length, label: "risk patterns detected" },
+  { value: LEXICON.length, label: "risk patterns checked by rule" },
   { value: GLOSSARY.length, label: "legal terms explained" },
-  { value: SAMPLES.length, label: "sample documents to try" },
+  { value: LANGUAGES.length, label: "languages for explanations" },
   { value: 0, label: "documents stored, ever" },
 ];
 
@@ -30,25 +33,43 @@ const FEATURES = [
   {
     icon: FileSearch,
     title: "Plain-language breakdown",
-    body: "Every clause, translated: what it says, what it means for you, and the exact words that triggered each flag — so you can check the claim against the document.",
+    body: "Every clause, translated: what it says and what it means for you. Tap “explain simply” on any clause for a Gemini walkthrough, with a fairer wording you could propose.",
     href: "/analyze",
   },
   {
     icon: Scale,
     title: "Risk flags with receipts",
-    body: "Auto-renewal traps, one-sided termination, salary deductions, arbitration clauses. Each flag quotes its evidence and tells you what to do about it.",
+    body: "Auto-renewal traps, one-sided termination, salary deductions, arbitration clauses. Each flag quotes the exact words that triggered it and tells you what to do about it.",
     href: "/analyze",
   },
   {
-    icon: SplitSquareHorizontal,
-    title: "Compare two versions",
-    body: "Two offers, or an old draft against a new one: which topics each covers, which traps only one has, and how the numbers differ.",
-    href: "/compare",
+    icon: GitCompareArrows,
+    title: "Catches contradictions",
+    body: "Two clauses naming different notice periods, words and figures that disagree, references to clauses that don’t exist — each one shown with both sides quoted.",
+    href: "/analyze?sample=employment",
   },
   {
     icon: MessageCircleQuestion,
     title: "Ask the document",
-    body: "“Can I quit?” “When do I get my deposit back?” Answers come only from the document, quoted and cited — or an honest “it doesn't say.”",
+    body: "“Can I quit?” “When do I get my deposit back?” Gemini answers from the document alone, in your language — every quote checked against the text, or an honest “it doesn’t say.”",
+    href: "/analyze",
+  },
+  {
+    icon: Compass,
+    title: "What are my options?",
+    body: "Describe your situation in your own words. See the routes the document gives you, what each one costs, and the next steps — every option backed by the clause it comes from.",
+    href: "/analyze?sample=rental",
+  },
+  {
+    icon: SplitSquareHorizontal,
+    title: "Compare two versions",
+    body: "Two offers, or an old draft against a new one: which topics each covers, which traps only one has, how the numbers differ — and what that means for you.",
+    href: "/compare",
+  },
+  {
+    icon: Languages,
+    title: "Your language, your format",
+    body: "Upload a PDF, a Word file or a phone photo of the paper. Get explanations in Hindi, Marathi, Tamil, Bengali and eight more — quotes stay exactly as written.",
     href: "/analyze",
   },
   {
@@ -60,23 +81,23 @@ const FEATURES = [
   {
     icon: BookOpen,
     title: "Prepared for your lawyer",
-    body: "A generated list of the questions worth paying a professional to answer — so a 30-minute consultation covers what matters.",
+    body: "The questions worth paying a professional to answer, generated from your document — so a 30-minute consultation covers what matters.",
     href: "/analyze",
   },
 ];
 
 const STEPS = [
   {
-    title: "The engine finds",
-    body: "Deterministic analysis segments the document into clauses, classifies each against a curated lexicon of risk patterns, and extracts every amount, date and deadline with rules — not guesses. The same document always produces the same analysis.",
+    title: "Rules find the facts",
+    body: "A deterministic engine splits the document into clauses, checks each against a curated lexicon of risk patterns, and extracts every amount, date and deadline with rules — not guesses. Same document, same result, every time.",
   },
   {
-    title: "The evidence shows",
-    body: "Nothing is flagged that can't be pointed at. Every finding carries the sentence that triggered it, every answer quotes the clause it came from, and questions the document doesn't answer get an honest refusal.",
+    title: "Gemini explains",
+    body: "Google’s Gemini turns those findings into a brief you can act on, answers your questions, maps out your options and reads for contradictions — in the language you choose.",
   },
   {
-    title: "AI only rephrases",
-    body: "An optional AI pass rewrites the findings into a friendlier brief — it receives the engine's results, not licence to invent. With no AI configured, everything still works; the analysis never depended on it.",
+    title: "Every claim is checked",
+    body: "Gemini must cite the clause and quote it exactly. Each quote is verified against your document; anything that can’t be found is thrown away before you see it. No quote, no claim.",
   },
 ];
 
@@ -117,10 +138,11 @@ export default function HomePage() {
               className="animate-fade-in-up mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground"
               style={{ animationDelay: "0.16s" }}
             >
-              Paste a lease, an offer letter, a freelance contract or the terms
-              nobody reads. ClearClause breaks it into plain language, flags the
-              clauses that cost people money, and tells you what to ask before
-              you sign.
+              Paste, upload or photograph a lease, an offer letter or the terms
+              nobody reads. ClearClause uses Gemini to explain it in plain
+              language — in your language — flags the clauses that cost people
+              money, maps out your options, and tells you what to ask before you
+              sign. Every claim points to the exact words in your document.
             </p>
             <div
               className="animate-fade-in-up mt-8 flex flex-wrap items-center gap-3"
@@ -202,9 +224,10 @@ export default function HomePage() {
               Built not to make things up
             </h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              A legal tool that guesses is worse than no tool. The usual
-              dependency is inverted here: analysis comes from verifiable
-              rules, and a language model is only ever allowed to rephrase it.
+              A legal tool that guesses is worse than no tool. So the rules
+              establish the facts, Gemini does the explaining, and nothing
+              the model says reaches you unless it can point to the exact
+              words in your document.
             </p>
           </Reveal>
           <ol className="mt-12 grid gap-8 sm:grid-cols-3">
@@ -251,9 +274,9 @@ export default function HomePage() {
             <ul className="space-y-3">
               {[
                 "Information, not legal advice — the distinction is on every page and every export.",
-                "Deterministic first: the same document always gets the same analysis, so results can be audited and tested.",
-                "Works with zero API keys — the optional AI layer only rewords what the engine already found.",
-                "No accounts, no storage, no analytics on your documents. The privacy model is that there is nothing to leak.",
+                "Grounded AI: every quote Gemini shows you has been checked against your document; unverifiable answers are dropped.",
+                "Never breaks: if the AI is unavailable, the rule engine still analyses, answers and compares on its own.",
+                "No accounts, no storage, no analytics on your documents. Text is processed in memory and forgotten.",
               ].map((line) => (
                 <li key={line} className="flex gap-3 rounded-xl border border-border bg-surface p-4">
                   <ShieldCheck className="mt-0.5 size-5 shrink-0 text-ok" aria-hidden />
