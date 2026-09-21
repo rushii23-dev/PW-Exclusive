@@ -41,6 +41,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Self-contained server bundle for the container image (Cloud Run). Other
+  // hosts such as Vercel ignore this and use their own output.
+  output: "standalone",
   async headers() {
     return [
       {
