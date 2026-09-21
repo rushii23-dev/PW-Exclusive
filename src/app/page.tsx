@@ -46,7 +46,7 @@ const FEATURES = [
     icon: GitCompareArrows,
     title: "Catches contradictions",
     body: "Two clauses naming different notice periods, words and figures that disagree, references to clauses that don’t exist — each one shown with both sides quoted.",
-    href: "/analyze?sample=employment",
+    href: "/analyze?sample=pg",
   },
   {
     icon: MessageCircleQuestion,
