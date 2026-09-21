@@ -26,7 +26,9 @@ Every use case in the brief, and a few beyond it:
 
 - **12 languages** for every explanation: English, Hindi, Marathi, Bengali, Tamil, Telugu, Kannada, Gujarati, Malayalam, Punjabi, Urdu, Spanish. Quotes are never translated, so they still match the paper.
 - **Upload a PDF, a Word file, or a phone photo** of the document. Text PDFs and `.docx` files are read directly; scans and photos are read by Gemini's vision.
-- **52-term legal glossary**, defined by what each term does to you.
+- **61-term legal glossary**, defined by what each term does to you.
+
+**Try it in one click** — six sample documents are built in: a rental agreement, an employment contract, a mutual NDA, a freelance contract, subscription terms, and a **PG licence drafted with deliberate errors** (two deposit amounts, "thirty (45) days", two courts, a reference to a clause that doesn't exist) to show the contradiction checks at work.
 
 ---
 
@@ -78,7 +80,7 @@ Open http://localhost:3000. Get a free Gemini key at [Google AI Studio](https://
 ## Test
 
 ```bash
-npm test          # 190 tests: engine, AI grounding, API routes, file reading
+npm test          # 209 tests: engine, AI grounding, API routes, file reading
 npm run typecheck
 npm run lint
 ```
