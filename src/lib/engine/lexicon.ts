@@ -93,7 +93,7 @@ export const LEXICON: LexiconRule[] = [
     category: "termination",
     level: "high",
     label: "One-sided termination",
-    pattern: /\b(?:(?:company|landlord|lessor|provider|licensor|employer|we)\s+may\s+terminate\s+(?:this\s+)?(?:agreement|lease|contract)?\s*(?:at\s+any\s+time|without\s+(?:cause|notice|reason))|terminate\s+(?:at\s+its\s+sole|in\s+its\s+sole)\s+discretion|with\s+or\s+without\s+cause)\b/i,
+    pattern: /\b(?:(?:company|landlord|lessor|owner|provider|licensor|employer|we)\s+may\s+terminate\s+(?:this\s+)?(?:agreement|lease|licen[cs]e|contract)?\s*(?:at\s+any\s+time|without\s+(?:cause|notice|reason))|terminate\s+(?:at\s+its\s+sole|in\s+its\s+sole)\s+discretion|with\s+or\s+without\s+cause)\b/i,
     explanation:
       "One side can end the agreement whenever it likes, while you are likely bound to notice periods or fees. The exit rights are not symmetrical.",
     advice:
@@ -369,7 +369,7 @@ export const LEXICON: LexiconRule[] = [
     category: "entry-access",
     level: "high",
     label: "Entry without notice",
-    pattern: /\b(?:enter\s+(?:the\s+)?(?:premises|property|unit|apartment)\s+(?:at\s+any\s+time|without\s+(?:prior\s+)?notice)|right\s+(?:of|to)\s+(?:entry|inspect\w*)\s+(?:at\s+any\s+time|without\s+notice))\b/i,
+    pattern: /\b(?:enter\s+(?:the\s+)?(?:premises|property|unit|apartment|room|flat|house|accommodation)\s+(?:at\s+any\s+time|without\s+(?:prior\s+)?notice)|right\s+(?:of|to)\s+(?:entry|inspect\w*)\s+(?:at\s+any\s+time|without\s+notice))\b/i,
     explanation:
       "The landlord can come in whenever they choose. Standard practice — and in many places the law — is reasonable advance notice except in emergencies.",
     advice:
