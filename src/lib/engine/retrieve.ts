@@ -9,7 +9,7 @@
  * than no tool.
  */
 
-import { splitSentences, tokenize, truncateAtWord } from "./text";
+import { splitSentences, stem, tokenize, truncateAtWord } from "./text";
 import type { Answer, Clause } from "./types";
 
 const STOPWORDS = new Set([
@@ -84,9 +84,9 @@ export class ClauseIndex {
 
   constructor(clauses: Clause[]) {
     for (const clause of clauses) {
-      const terms = tokenize(`${clause.heading ?? ""} ${clause.text}`).filter(
-        (t) => !STOPWORDS.has(t),
-      );
+      const terms = tokenize(`${clause.heading ?? ""} ${clause.text}`)
+        .filter((t) => !STOPWORDS.has(t))
+        .map(stem);
       const tf = new Map<string, number>();
       for (const t of terms) tf.set(t, (tf.get(t) ?? 0) + 1);
       for (const t of tf.keys()) this.df.set(t, (this.df.get(t) ?? 0) + 1);
@@ -104,9 +104,10 @@ export class ClauseIndex {
     // should always beat matching a synonym of it.
     const weighted = new Map<string, number>();
     for (const t of raw) {
-      weighted.set(t, 1);
+      weighted.set(stem(t), 1);
       for (const syn of SYNONYMS[t] ?? []) {
-        if (!weighted.has(syn)) weighted.set(syn, 0.6);
+        const s = stem(syn);
+        if (!weighted.has(s)) weighted.set(s, 0.6);
       }
     }
     if (weighted.size === 0) return [];
@@ -134,13 +135,14 @@ export class ClauseIndex {
 
 /** The best supporting sentence from a clause, for the quoted citation. */
 export function bestQuote(clause: Clause, query: string): string {
-  const queryTerms = new Set(tokenize(query).filter((t) => !STOPWORDS.has(t)));
-  for (const t of [...queryTerms]) for (const s of SYNONYMS[t] ?? []) queryTerms.add(s);
+  const raw = tokenize(query).filter((t) => !STOPWORDS.has(t));
+  const queryTerms = new Set(raw.map(stem));
+  for (const t of raw) for (const s of SYNONYMS[t] ?? []) queryTerms.add(stem(s));
 
   let best = "";
   let bestOverlap = 0;
   for (const sentence of splitSentences(clause.text)) {
-    const terms = new Set(tokenize(sentence));
+    const terms = new Set(tokenize(sentence).map(stem));
     let overlap = 0;
     for (const t of queryTerms) if (terms.has(t)) overlap++;
     if (overlap > bestOverlap) {
