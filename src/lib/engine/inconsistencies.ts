@@ -130,11 +130,29 @@ const AMOUNT_LABELS: Array<{ key: string; label: string; re: RegExp }> = [
   { key: "fee", label: "fee", re: /\b(?:service|monthly|annual|retainer|subscription)\s+fees?\b/i },
 ];
 
-/** Words that mean the amount is a change to a figure, not the figure itself. */
-const REVISION_RE = /\b(increase|escalat|revis|increment|hike|raise|additional|deduct|penalt|late|interest|per day|each day|maintenance)\w*/i;
+/** Words that make the amount a change to a figure, not the figure itself. */
+const REVISION_RE = /\b(increas|escalat|revis|increment|hike|raise|additional|deduct|penalt|late|interest|per day|each day|maintenance|reduc)\w*/i;
+
+/** How far from its label an amount may sit and still be that label's value. */
+const LABEL_BEFORE_CHARS = 45;
+const LABEL_AFTER_CHARS = 25;
 
 function normaliseAmount(text: string): string {
   return text.replace(/[^\d.]/g, "").replace(/\.0+$/, "").replace(/^0+/, "");
+}
+
+/**
+ * The label an amount belongs to, judged by proximity: "security deposit of
+ * Rs. 50,000" or "Rs. 32,000 as monthly rent". Revision words in that same
+ * window ("rent shall increase to Rs. 21,000") disqualify it — but a
+ * revision word elsewhere in the sentence ("…refunded after deductions")
+ * does not.
+ */
+function labelFor(sentence: string, start: number, end: number, re: RegExp): boolean {
+  const before = sentence.slice(Math.max(0, start - LABEL_BEFORE_CHARS), start);
+  const after = sentence.slice(end, end + LABEL_AFTER_CHARS);
+  if (REVISION_RE.test(before)) return false;
+  return re.test(before) || re.test(after);
 }
 
 function conflictingAmounts(clauses: Clause[]): Inconsistency[] {
@@ -143,11 +161,14 @@ function conflictingAmounts(clauses: Clause[]): Inconsistency[] {
     const seen: Array<{ value: string; text: string; clause: Clause; sentence: string }> = [];
     for (const clause of clauses) {
       for (const sentence of splitSentences(clause.text)) {
-        if (!re.test(sentence) || REVISION_RE.test(sentence)) continue;
+        if (!re.test(sentence)) continue;
         const monies = extractEntities(sentence).filter((e) => e.kind === "money");
-        // One amount per sentence keeps the attribution unambiguous: with two
-        // amounts in a sentence we can't tell which one the label belongs to.
+        // Two amounts in one sentence ("Rs. 32,000 rent and Rs. 3,20,000
+        // deposit") are usually a deliberate pairing; attribution is too
+        // uncertain to call either one a contradiction.
         if (monies.length !== 1) continue;
+        const start = sentence.indexOf(monies[0].text);
+        if (start === -1 || !labelFor(sentence, start, start + monies[0].text.length, re)) continue;
         const value = normaliseAmount(monies[0].text);
         if (!value) continue;
         seen.push({ value, text: monies[0].text, clause, sentence });
