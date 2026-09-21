@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { analyzeDocument } from "@/lib/engine/analyze";
 import { answerQuestion, ClauseIndex } from "@/lib/engine/retrieve";
-import { EMPLOYMENT_CONTRACT, RENTAL_AGREEMENT } from "@/lib/samples";
+import { EMPLOYMENT_CONTRACT, PG_LICENCE, RENTAL_AGREEMENT } from "@/lib/samples";
 
 function makeIndex(text: string) {
   const analysis = analyzeDocument(text);
@@ -63,5 +63,16 @@ describe("document Q&A", () => {
     expect(hits.length).toBeGreaterThan(0);
     const top = analysis.clauses.find((c) => c.id === hits[0].clause.id);
     expect(top!.heading).toMatch(/rent/i);
+  });
+});
+
+describe("party names in paying-guest agreements", () => {
+  it("maps 'landlord' onto an agreement that says 'Owner'", () => {
+    const { index } = makeIndex(PG_LICENCE);
+    const answer = answerQuestion(index, "Can the landlord make me leave suddenly?");
+    expect(answer.found).toBe(true);
+    expect(answer.citations.map((c) => c.heading?.toLowerCase() ?? "")).toEqual(
+      expect.arrayContaining([expect.stringContaining("owner")]),
+    );
   });
 });
