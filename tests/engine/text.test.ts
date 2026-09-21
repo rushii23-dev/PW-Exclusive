@@ -5,9 +5,30 @@ import {
   normalizeWhitespace,
   parseNumberWord,
   splitSentences,
+  stem,
   tokenize,
   truncateAtWord,
 } from "@/lib/engine/text";
+
+describe("stem", () => {
+  it("brings inflections of one word together", () => {
+    const forms = ["renew", "renews", "renewed", "renewal", "renewing"].map(stem);
+    expect(new Set(forms).size).toBe(1);
+    expect(stem("terminate")).toBe(stem("terminated"));
+    expect(stem("termination")).toBe(stem("terminate"));
+    expect(stem("penalties")).toBe(stem("penalty"));
+  });
+
+  it("leaves short words and numbers alone", () => {
+    expect(stem("pay")).toBe("pay");
+    expect(stem("60")).toBe("60");
+    expect(stem("2025s")).toBe("2025s");
+  });
+
+  it("keeps the double s of words like 'business'", () => {
+    expect(stem("business")).toBe("business");
+  });
+});
 
 describe("tokenize", () => {
   it("lowercases and strips punctuation", () => {

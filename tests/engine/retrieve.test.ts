@@ -10,6 +10,13 @@ function makeIndex(text: string) {
 }
 
 describe("document Q&A", () => {
+  it("matches a word to its other forms ('renew' finds 'renewed')", () => {
+    const { index } = makeIndex(RENTAL_AGREEMENT);
+    const answer = answerQuestion(index, "Does the lease renew by itself?");
+    expect(answer.found).toBe(true);
+    expect(answer.citations[0].quote.toLowerCase()).toContain("renewed automatically");
+  });
+
   it("maps colloquial 'quit' onto the termination clause", () => {
     const { index } = makeIndex(EMPLOYMENT_CONTRACT);
     const answer = answerQuestion(index, "What happens if I want to quit my job?");
