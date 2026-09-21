@@ -9,22 +9,21 @@ import {
   FileText,
   Percent,
   Printer,
-  Sparkles,
+  ShieldCheck,
   Timer,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { AiBriefCard } from "@/components/analyze/AiBriefCard";
 import { AskPanel } from "@/components/analyze/AskPanel";
 import { ClauseCard } from "@/components/analyze/ClauseCard";
+import { InconsistencyList } from "@/components/analyze/InconsistencyList";
+import { OptionsPanel } from "@/components/analyze/OptionsPanel";
 import { RiskMeter } from "@/components/RiskMeter";
 import { Tabs } from "@/components/Tabs";
+import type { AiBrief } from "@/lib/ai/brief";
 import { toPlainText, type Analysis, type RiskLevel } from "@/lib/engine";
 import { cn } from "@/lib/utils";
-
-export interface AiBriefPayload {
-  paragraphs: string[];
-  model: string;
-}
 
 const ENTITY_ICON = {
   money: Coins,
@@ -260,11 +259,12 @@ function FactsTab({ analysis }: { analysis: Analysis }) {
 export function AnalysisView({
   analysis,
   aiBrief,
-  documentText,
+  aiCheckedContradictions,
 }: {
   analysis: Analysis;
-  aiBrief: AiBriefPayload | null;
-  documentText: string;
+  aiBrief: AiBrief | null;
+  /** Whether Gemini completed its contradiction read, so the "none found" note is truthful. */
+  aiCheckedContradictions: boolean;
 }) {
   const stats = useMemo(
     () => [
@@ -309,6 +309,9 @@ export function AnalysisView({
         </div>
       </section>
 
+      {/* ── Gemini brief ────────────────────────────────────────────── */}
+      {aiBrief && <AiBriefCard brief={aiBrief} />}
+
       {/* ── Summary ─────────────────────────────────────────────────── */}
       <section
         aria-labelledby="summary-heading"
@@ -326,24 +329,18 @@ export function AnalysisView({
           ))}
         </ul>
 
-        {aiBrief && (
-          <div className="mt-5 rounded-xl bg-primary-soft p-5">
-            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary-strong">
-              <Sparkles className="size-3.5" aria-hidden />
-              AI brief — rephrased from the findings above
-            </p>
-            <div className="mt-2 space-y-2.5 text-sm leading-relaxed">
-              {aiBrief.paragraphs.map((p) => (
-                <p key={p}>{p}</p>
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              Written by {aiBrief.model} from the deterministic findings only —
-              it adds no clause or risk of its own.
-            </p>
-          </div>
+        {analysis.inconsistencies.length === 0 && (
+          <p className="mt-4 flex items-center gap-2 rounded-lg bg-ok-soft px-3 py-2 text-xs font-medium text-ok">
+            <ShieldCheck className="size-4 shrink-0" aria-hidden />
+            {aiCheckedContradictions
+              ? "No contradictions found — checked by the rule engine and by Gemini."
+              : "No contradictions found between clauses by the rule engine."}
+          </p>
         )}
       </section>
+
+      {/* ── Contradictions ──────────────────────────────────────────── */}
+      <InconsistencyList items={analysis.inconsistencies} />
 
       {/* ── Detail tabs ─────────────────────────────────────────────── */}
       <Tabs
@@ -355,15 +352,20 @@ export function AnalysisView({
             content: <ClausesTab analysis={analysis} />,
           },
           {
+            id: "ask",
+            label: "Ask the document",
+            content: <AskPanel />,
+          },
+          {
+            id: "options",
+            label: "Your options",
+            content: <OptionsPanel documentType={analysis.documentType} />,
+          },
+          {
             id: "plan",
             label: "Action plan",
             count: analysis.checklist.length,
             content: <ActionPlanTab analysis={analysis} />,
-          },
-          {
-            id: "ask",
-            label: "Ask the document",
-            content: <AskPanel documentText={documentText} />,
           },
           {
             id: "facts",
