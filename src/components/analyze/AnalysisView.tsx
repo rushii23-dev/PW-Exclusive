@@ -83,13 +83,26 @@ function ClausesTab({ analysis }: { analysis: Analysis }) {
   );
 }
 
-function ActionPlanTab({ analysis }: { analysis: Analysis }) {
+/** The brief as plain text, placed ahead of the engine's export. */
+function briefAsText(brief: AiBrief): string {
+  const lines = ["YOUR BRIEF", `  ${brief.headline}`, ""];
+  for (const p of brief.paragraphs) lines.push(`  ${p}`, "");
+  if (brief.topConcerns.length > 0) {
+    lines.push("WHAT MATTERS MOST");
+    for (const c of brief.topConcerns) lines.push(`  - ${c.title}: ${c.detail}`);
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+function ActionPlanTab({ analysis, brief }: { analysis: Analysis; brief: AiBrief | null }) {
   const [done, setDone] = useState<Set<number>>(new Set());
   const [copied, setCopied] = useState(false);
 
   async function copyAll() {
     try {
-      await navigator.clipboard.writeText(toPlainText(analysis));
+      const body = toPlainText(analysis);
+      await navigator.clipboard.writeText(brief ? `${briefAsText(brief)}\n${body}` : body);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -365,7 +378,7 @@ export function AnalysisView({
             id: "plan",
             label: "Action plan",
             count: analysis.checklist.length,
-            content: <ActionPlanTab analysis={analysis} />,
+            content: <ActionPlanTab analysis={analysis} brief={aiBrief} />,
           },
           {
             id: "facts",
