@@ -33,7 +33,30 @@ export const metadata: Metadata = {
     template: "%s · ClearClause",
   },
   description:
-    "Paste any contract and get a plain-language breakdown: what each clause means, where the risks are, and what to ask before you sign. Nothing is stored.",
+    "Paste, upload or photograph any contract and get a plain-language breakdown in your language: what each clause means, where the risks and contradictions are, your options, and what to ask before you sign. Powered by Gemini. Nothing is stored.",
+  applicationName: "ClearClause",
+  keywords: [
+    "legal document explainer",
+    "contract review",
+    "rental agreement",
+    "employment contract",
+    "legal aid",
+    "Gemini",
+  ],
+  // What a link to the site shows when shared in chat apps and social posts.
+  openGraph: {
+    type: "website",
+    siteName: "ClearClause",
+    title: "ClearClause — understand what you're signing",
+    description:
+      "Plain-language explanations of contracts, in 12 languages, with every claim checked against the document. Information, not legal advice.",
+  },
+  twitter: {
+    card: "summary",
+    title: "ClearClause — understand what you're signing",
+    description:
+      "Plain-language explanations of contracts, in 12 languages, with every claim checked against the document.",
+  },
 };
 
 /* One theme only: tell the browser so its own chrome — scrollbars, form
