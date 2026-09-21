@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { analyzeDocument } from "@/lib/engine";
-import { SAMPLES } from "@/lib/samples";
+import { PG_LICENCE, SAMPLES } from "@/lib/samples";
 
 const PREAMBLE =
   "This Agreement is made between the Company and the Consultant for the provision of services described below.\n\n";
@@ -116,9 +116,23 @@ describe("findInconsistencies", () => {
     }
   });
 
-  it("raises no false alarms on any of the bundled sample documents", () => {
-    for (const sample of SAMPLES) {
+  it("raises no false alarms on the well-drafted sample documents", () => {
+    // The PG licence is the one sample drafted with deliberate errors.
+    for (const sample of SAMPLES.filter((s) => s.id !== "pg")) {
       expect(analyzeDocument(sample.text).inconsistencies, sample.id).toEqual([]);
     }
+  });
+
+  it("finds every error planted in the PG licence sample", () => {
+    const found = analyzeDocument(PG_LICENCE).inconsistencies;
+    expect(found.map((i) => i.id).sort()).toEqual(
+      expect.arrayContaining([
+        "conflicting-deposit",
+        "conflicting-notice",
+        "missing-reference-11",
+        "multiple-jurisdictions",
+      ]),
+    );
+    expect(found.some((i) => i.kind === "number-mismatch")).toBe(true);
   });
 });
