@@ -1,20 +1,25 @@
 /**
  * GET /api/health — liveness and capability report.
  *
- * Reports whether optional AI enhancement is configured without revealing
- * anything about the key itself.
+ * Says whether Gemini is configured and which model is in use, without
+ * revealing anything about the key itself.
  */
 
 import { NextResponse } from "next/server";
 
-import { isAiConfigured } from "@/lib/ai/enhance";
+import { geminiModel, isAiConfigured } from "@/lib/ai/gemini";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const configured = isAiConfigured();
   return NextResponse.json({
     status: "ok",
     engine: "deterministic",
-    aiEnhancement: isAiConfigured() ? "configured" : "not configured",
+    ai: {
+      provider: "gemini",
+      configured,
+      model: configured ? geminiModel() : null,
+    },
   });
 }
