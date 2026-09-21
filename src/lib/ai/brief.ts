@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import type { Analysis } from "@/lib/engine";
 
-import { baseRules, geminiModel, generateJson } from "./gemini";
+import { baseRules, generateJson } from "./gemini";
 import type { LanguageCode } from "./languages";
 
 export interface AiBrief {
@@ -92,7 +92,7 @@ export async function generateAiBrief(
   analysis: Analysis,
   language: LanguageCode,
 ): Promise<AiBrief | null> {
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "brief",
     system: `${baseRules(language)}
 
@@ -102,7 +102,8 @@ Your task: turn the rule engine's findings about a ${analysis.documentTypeLabel.
     validate: reply,
     temperature: 0.4,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   return {
     headline: result.headline.trim(),
@@ -113,6 +114,6 @@ Your task: turn the rule engine's findings about a ${analysis.documentTypeLabel.
       .slice(0, 3)
       .map((c) => ({ title: c.title.trim(), detail: c.detail.trim() })),
     beforeYouSign: result.beforeYouSign.map((s) => s.trim()).filter(Boolean),
-    model: geminiModel(),
+    model: ai.model,
   };
 }

@@ -67,7 +67,7 @@ export async function aiAnswer(
   const index = new ClauseIndex(analysis.clauses);
   const { clauses } = selectContext(analysis.clauses, index, question);
 
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "ask",
     system: `${baseRules(language)}
 
@@ -76,7 +76,8 @@ Your task: answer the reader's question about their ${analysis.documentTypeLabel
     schema,
     validate: reply,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   if (!result.answerable) {
     return {

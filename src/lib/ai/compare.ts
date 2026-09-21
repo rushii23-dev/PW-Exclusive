@@ -11,7 +11,7 @@ import { z } from "zod";
 
 import type { Analysis, Comparison } from "@/lib/engine";
 
-import { baseRules, geminiModel, generateJson } from "./gemini";
+import { baseRules, generateJson } from "./gemini";
 import type { LanguageCode } from "./languages";
 
 export interface CompareVerdict {
@@ -89,7 +89,7 @@ export async function generateCompareVerdict(
     numbers: comparison.numbers,
   };
 
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "compare",
     system: `${baseRules(language)}
 
@@ -99,7 +99,8 @@ Your task: the reader is choosing between, or checking changes between, two docu
     validate: reply,
     temperature: 0.3,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   const clean = (xs: string[]) => xs.map((s) => s.trim()).filter(Boolean);
   return {
@@ -108,6 +109,6 @@ Your task: the reader is choosing between, or checking changes between, two docu
     betterInB: clean(result.betterInB),
     watchOut: clean(result.watchOut),
     questionsToAsk: clean(result.questionsToAsk),
-    model: geminiModel(),
+    model: ai.model,
   };
 }

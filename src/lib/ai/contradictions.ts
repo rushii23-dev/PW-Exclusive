@@ -81,7 +81,7 @@ export async function aiContradictions(
 
   const alreadyFound = analysis.inconsistencies.map((i) => i.title);
 
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "contradictions",
     system: `${baseRules(language)}
 
@@ -91,7 +91,8 @@ Your task: read the whole ${analysis.documentTypeLabel.toLowerCase()} and find p
     validate: reply,
     temperature: 0.1,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   const engineClauseSets = analysis.inconsistencies.map(
     (i) => new Set(i.evidence.map((e) => e.clauseId)),

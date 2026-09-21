@@ -76,7 +76,7 @@ export async function explainClause(
     evidence: f.evidence,
   }));
 
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "explain",
     system: `${baseRules(language)}
 
@@ -86,7 +86,8 @@ Your task: explain a single clause from a ${analysis.documentTypeLabel.toLowerCa
     validate: reply,
     temperature: 0.3,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   const fairer = result.fairerWording?.trim();
   return {

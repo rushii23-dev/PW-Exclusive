@@ -119,7 +119,7 @@ export async function aiSituationGuide(
   const index = new ClauseIndex(analysis.clauses);
   const { clauses } = selectContext(analysis.clauses, index, situation);
 
-  const result = await generateJson({
+  const ai = await generateJson({
     feature: "options",
     system: `${baseRules(language)}
 
@@ -129,7 +129,8 @@ Your task: the reader has described their situation. Using only the clauses prov
     validate: reply,
     temperature: 0.3,
   });
-  if (!result) return null;
+  if (!ai) return null;
+  const result = ai.data;
 
   const options = result.options
     .map((o) => ({
