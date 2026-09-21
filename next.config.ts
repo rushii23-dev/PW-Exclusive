@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
   // Self-contained server bundle for the container image (Cloud Run). Other
   // hosts such as Vercel ignore this and use their own output.
   output: "standalone",
+  // Don't scaffold editor-assistant note files into the project on `next dev`.
+  agentRules: false,
   async headers() {
     return [
       {
