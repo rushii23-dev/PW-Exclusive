@@ -52,7 +52,7 @@ Every use case in the brief, and a few beyond it:
 - **Citations are verified, not trusted.** Quotes are normalised (quote marks, dashes, whitespace) and matched against the cited clause. An answer or option without verified support never reaches the reader.
 - **Prompt-injection resistant.** The document is wrapped as untrusted data; the system prompt forbids following instructions inside it.
 - **Honest about gaps.** "The document doesn't say" is a first-class answer, and the UI only claims Gemini checked for contradictions when that check actually completed.
-- **Never breaks.** If Gemini is unavailable, slow or wrong, every feature falls back to the rule engine. With no API key at all, analysis, Q&A, options and comparison still work.
+- **Never breaks.** If a Gemini model is overloaded, the next model in a fallback chain answers within a fixed time budget; if Gemini is unavailable or wrong, every feature falls back to the rule engine. With no API key at all, analysis, Q&A, options and comparison still work.
 - **Private.** Documents are processed in memory and never stored or logged. No accounts, no analytics on content. Strict CSP, `no-store` on API responses, rate limiting, size caps.
 
 ---
@@ -72,12 +72,13 @@ Open http://localhost:3000. Get a free Gemini key at [Google AI Studio](https://
 | Variable | Required | Purpose |
 |---|---|---|
 | `GEMINI_API_KEY` | For AI features | Google Gemini API key |
-| `GEMINI_MODEL` | No | Override the model (default `gemini-3.5-flash`) |
+| `GEMINI_MODEL` | No | Override the model (default `gemini-3.5-flash-lite`) |
+| `GEMINI_FALLBACK_MODELS` | No | Comma-separated models to try if the main one is busy (default `gemini-3.1-flash-lite,gemini-3.5-flash,gemini-2.5-flash`) |
 
 ## Test
 
 ```bash
-npm test          # 178 tests: engine, AI grounding, API routes, file reading
+npm test          # 190 tests: engine, AI grounding, API routes, file reading
 npm run typecheck
 npm run lint
 ```
