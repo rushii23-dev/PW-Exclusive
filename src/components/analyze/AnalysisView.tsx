@@ -22,7 +22,7 @@ import { OptionsPanel } from "@/components/analyze/OptionsPanel";
 import { RiskMeter } from "@/components/RiskMeter";
 import { Tabs } from "@/components/Tabs";
 import type { AiBrief } from "@/lib/ai/brief";
-import { toPlainText, type Analysis, type RiskLevel } from "@/lib/engine";
+import { formatCount, toPlainText, type Analysis, type RiskLevel } from "@/lib/engine";
 import { cn } from "@/lib/utils";
 
 const ENTITY_ICON = {
@@ -268,7 +268,7 @@ export function AnalysisView({
 }) {
   const stats = useMemo(
     () => [
-      { label: "words", value: analysis.readability.wordCount.toLocaleString() },
+      { label: "words", value: formatCount(analysis.readability.wordCount) },
       { label: "min read", value: String(analysis.readability.readingTimeMinutes) },
       { label: "clauses", value: String(analysis.clauses.length) },
       { label: "reading level", value: analysis.readability.band },

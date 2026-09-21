@@ -18,6 +18,7 @@ export { answerQuestion, bestQuote, ClauseIndex } from "./retrieve";
 export type { RetrievalHit } from "./retrieve";
 export { findInconsistencies } from "./inconsistencies";
 export { toPlainText } from "./checklist";
+export { formatCount } from "./text";
 export { CATEGORY_LABELS } from "./lexicon";
 export { GLOSSARY } from "./glossary";
 export type { GlossaryEntry } from "./glossary";

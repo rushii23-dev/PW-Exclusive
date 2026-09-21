@@ -15,6 +15,7 @@ import { extractObligations } from "./obligations";
 import { computeReadability } from "./readability";
 import { segment } from "./segment";
 import { composeSummary, detectDocumentType } from "./summarize";
+import { formatCount } from "./text";
 import type {
   Analysis,
   Clause,
@@ -29,7 +30,7 @@ export const MIN_DOCUMENT_CHARS = 80;
 
 export class DocumentTooLargeError extends Error {
   constructor() {
-    super(`Document exceeds ${MAX_DOCUMENT_CHARS.toLocaleString()} characters.`);
+    super(`Document exceeds ${formatCount(MAX_DOCUMENT_CHARS)} characters.`);
     this.name = "DocumentTooLargeError";
   }
 }

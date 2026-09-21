@@ -6,6 +6,7 @@
  * wrong only if the extraction was wrong, and the extraction is testable.
  */
 
+import { formatCount } from "./text";
 import type {
   Clause,
   DocumentType,
@@ -119,7 +120,7 @@ export function composeSummary(args: {
   const lines: string[] = [];
 
   lines.push(
-    `This looks like a ${typeLabel.toLowerCase()} of ${readability.wordCount.toLocaleString()} words` +
+    `This looks like a ${typeLabel.toLowerCase()} of ${formatCount(readability.wordCount)} words` +
       ` (about ${readability.readingTimeMinutes} minute${readability.readingTimeMinutes === 1 ? "" : "s"} of careful reading),` +
       ` split into ${clauses.length} clause${clauses.length === 1 ? "" : "s"}.`,
   );

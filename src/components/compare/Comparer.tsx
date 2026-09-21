@@ -11,7 +11,7 @@ import { RiskBadge } from "@/components/RiskBadge";
 import { RiskMeter } from "@/components/RiskMeter";
 import type { CompareVerdict } from "@/lib/ai/compare";
 import { postJson } from "@/lib/client/api";
-import { MAX_DOCUMENT_CHARS, type Analysis, type Comparison } from "@/lib/engine";
+import { formatCount, MAX_DOCUMENT_CHARS, type Analysis, type Comparison } from "@/lib/engine";
 import { SAMPLES } from "@/lib/samples";
 import { cn } from "@/lib/utils";
 
@@ -202,7 +202,7 @@ export function Comparer() {
                   </p>
                   <h3 className="mt-1 text-lg font-semibold">{analysis.documentTypeLabel}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {analysis.readability.wordCount.toLocaleString()} words · reading
+                    {formatCount(analysis.readability.wordCount)} words · reading
                     level: {analysis.readability.band}
                   </p>
                   <div className="mt-4">

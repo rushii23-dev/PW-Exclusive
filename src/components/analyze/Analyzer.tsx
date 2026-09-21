@@ -9,7 +9,7 @@ import { LanguagePicker } from "@/components/ai/LanguagePicker";
 import { AnalysisView } from "@/components/analyze/AnalysisView";
 import type { AiBrief } from "@/lib/ai/brief";
 import { postJson } from "@/lib/client/api";
-import { MAX_DOCUMENT_CHARS, type Analysis } from "@/lib/engine";
+import { formatCount, MAX_DOCUMENT_CHARS, type Analysis } from "@/lib/engine";
 import { SAMPLES, type SampleDocument } from "@/lib/samples";
 import { cn } from "@/lib/utils";
 
@@ -185,7 +185,7 @@ export function Analyzer({
         />
         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
           <span aria-live="polite" className="tabular">
-            {text.length.toLocaleString()} / {MAX_DOCUMENT_CHARS.toLocaleString()} characters
+            {formatCount(text.length)} / {formatCount(MAX_DOCUMENT_CHARS)} characters
           </span>
           {text.length > 0 && (
             <button
