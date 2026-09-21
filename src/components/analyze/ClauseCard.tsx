@@ -3,6 +3,7 @@
 import { ChevronDown, Lightbulb, Quote } from "lucide-react";
 import { useState } from "react";
 
+import { ClauseExplainer } from "@/components/analyze/ClauseExplainer";
 import { RiskBadge } from "@/components/RiskBadge";
 import { CATEGORY_LABELS, type Clause } from "@/lib/engine";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,8 @@ export function ClauseCard({ clause }: { clause: Clause }) {
           </dl>
         </details>
       )}
+
+      <ClauseExplainer clauseId={clause.id} />
     </article>
   );
 }
