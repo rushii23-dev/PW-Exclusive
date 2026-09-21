@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 
-import { ClauseIndex, type Analysis } from "@/lib/engine";
+import { bestQuote, ClauseIndex, type Analysis } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
 import { formatClauses, selectContext, verifyCitations, type VerifiedCitation } from "./grounding";
@@ -178,16 +178,24 @@ export function engineSituationGuide(analysis: Analysis, situation: string): Sit
   }
 
   const labels = new Set(hits.flatMap((h) => h.clause.findings.map((f) => f.label)));
+  // Two clauses flagged by the same rule would otherwise repeat the same text.
+  const usedRules = new Set<string>();
   return {
     source: "engine",
     covered: true,
     summary: `These are the parts of your ${analysis.documentTypeLabel.toLowerCase()} that deal with this. Read them closely — they set out what you can do and what it costs.`,
-    options: hits.map((h) => ({
-      title: h.clause.heading ?? `Clause ${h.clause.index + 1}`,
-      whatHappens: h.clause.findings[0]?.explanation ?? "This clause is relevant to your situation.",
-      costsAndRisks: h.clause.findings[0]?.advice ?? "",
-      support: [{ clauseId: h.clause.id, heading: h.clause.heading, quote: h.clause.text.slice(0, 280) }],
-    })),
+    options: hits.map((h) => {
+      const finding = h.clause.findings.find((f) => !usedRules.has(f.ruleId));
+      if (finding) usedRules.add(finding.ruleId);
+      return {
+        title: h.clause.heading ?? `Clause ${h.clause.index + 1}`,
+        whatHappens: finding?.explanation ?? "This clause bears on your situation — read the quoted text closely.",
+        costsAndRisks: finding?.advice ?? "",
+        support: [
+          { clauseId: h.clause.id, heading: h.clause.heading, quote: bestQuote(h.clause, situation) },
+        ],
+      };
+    }),
     nextSteps: analysis.checklist.filter((c) => labels.has(c.because)).map((c) => c.text).slice(0, 5),
     questionsForProfessional: analysis.lawyerQuestions.slice(0, 3),
     urgency: null,
