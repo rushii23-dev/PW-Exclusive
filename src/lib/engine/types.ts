@@ -176,6 +176,8 @@ export interface Answer {
   found: boolean;
   /** Who wrote the response text: the rule engine or the model. */
   source?: "engine" | "ai";
+  /** Suggested next questions, when the model offers them. */
+  followUps?: string[];
   /** Plain-language response. Empty when `found` is false. */
   response: string;
   /** The clauses the answer is drawn from, best first. */
