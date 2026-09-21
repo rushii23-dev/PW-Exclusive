@@ -194,15 +194,15 @@ describe("aiContradictions", () => {
         },
       ],
     });
-    const found = await aiContradictions(rental, "en");
+    const found = (await aiContradictions(rental, "en"))!;
     expect(found.map((f) => f.title)).toEqual(["Real"]);
     expect(found[0].source).toBe("ai");
     expect(found[0].kind).toBe("contradiction");
   });
 
-  it("returns an empty list when the model fails", async () => {
+  it("returns null (not an empty list) when the model fails, so no check is claimed", async () => {
     gemini.reply(new Error("timeout"));
-    expect(await aiContradictions(rental, "en")).toEqual([]);
+    expect(await aiContradictions(rental, "en")).toBeNull();
   });
 });
 

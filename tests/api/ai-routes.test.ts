@@ -79,6 +79,7 @@ describe("POST /api/analyze with Gemini", () => {
     const json = await res.json();
     expect(json.ai.used).toBe(true);
     expect(json.ai.brief.headline).toBe("A lease that renews itself.");
+    expect(json.ai.contradictionsChecked).toBe(true);
     expect(json.analysis.clauses.length).toBeGreaterThan(5);
     expect(gemini.requests).toHaveLength(2);
     generateContent.mockReset();
@@ -94,6 +95,7 @@ describe("POST /api/analyze with Gemini", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ai.brief).toBeNull();
+    expect(json.ai.contradictionsChecked).toBe(false);
     expect(json.analysis.findings.length).toBeGreaterThan(0);
     generateContent.mockReset();
   });

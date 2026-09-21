@@ -66,12 +66,18 @@ const schema = {
   required: ["items"],
 };
 
+/**
+ * Returns the verified contradictions, or null if the check did not run
+ * (document too large, model unavailable or failed) — so the UI never claims
+ * a check happened when it didn't.
+ */
 export async function aiContradictions(
   analysis: Analysis,
   language: LanguageCode,
-): Promise<Inconsistency[]> {
+): Promise<Inconsistency[] | null> {
   const size = analysis.clauses.reduce((n, c) => n + c.text.length, 0);
-  if (analysis.clauses.length < 2 || size > MAX_DOCUMENT_CHARS) return [];
+  if (analysis.clauses.length < 2) return [];
+  if (size > MAX_DOCUMENT_CHARS) return null;
 
   const alreadyFound = analysis.inconsistencies.map((i) => i.title);
 
@@ -85,7 +91,7 @@ Your task: read the whole ${analysis.documentTypeLabel.toLowerCase()} and find p
     validate: reply,
     temperature: 0.1,
   });
-  if (!result) return [];
+  if (!result) return null;
 
   const engineClauseSets = analysis.inconsistencies.map(
     (i) => new Set(i.evidence.map((e) => e.clauseId)),

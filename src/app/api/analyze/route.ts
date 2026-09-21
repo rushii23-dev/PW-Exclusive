@@ -58,14 +58,19 @@ export async function POST(request: Request) {
         generateAiBrief(analysis, body.data.language),
         aiContradictions(analysis, body.data.language),
       ])
-    : [null, []];
+    : [null, null];
 
   return NextResponse.json({
-    analysis: { ...analysis, inconsistencies: [...analysis.inconsistencies, ...contradictions] },
+    analysis: {
+      ...analysis,
+      inconsistencies: [...analysis.inconsistencies, ...(contradictions ?? [])],
+    },
     ai: {
       available: isAiConfigured(),
       used: useAi,
       brief,
+      /** True only if Gemini actually completed its read for contradictions. */
+      contradictionsChecked: contradictions !== null,
     },
   });
 }
