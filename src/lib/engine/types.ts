@@ -119,6 +119,25 @@ export interface RiskProfile {
   overall: RiskLevel | null;
 }
 
+/** A quoted passage that supports an inconsistency. */
+export interface InconsistencyEvidence {
+  clauseId: string;
+  heading: string | null;
+  /** Exact text from the clause. */
+  quote: string;
+}
+
+/** Two parts of the document that disagree, or one that points at nothing. */
+export interface Inconsistency {
+  id: string;
+  kind: "number-mismatch" | "conflicting-values" | "missing-reference" | "contradiction";
+  title: string;
+  explanation: string;
+  evidence: InconsistencyEvidence[];
+  /** Found by a deterministic rule, or by the model and then quote-verified. */
+  source: "engine" | "ai";
+}
+
 export interface ChecklistItem {
   /** What to do. */
   text: string;
@@ -147,12 +166,16 @@ export interface Analysis {
   lawyerQuestions: string[];
   /** Jargon found in the document with plain definitions. */
   glossary: JargonHit[];
+  /** Places where the document contradicts itself, each with quotes. */
+  inconsistencies: Inconsistency[];
 }
 
 /** A grounded answer to a question about the document. */
 export interface Answer {
   /** True when retrieval was confident enough to answer at all. */
   found: boolean;
+  /** Who wrote the response text: the rule engine or the model. */
+  source?: "engine" | "ai";
   /** Plain-language response. Empty when `found` is false. */
   response: string;
   /** The clauses the answer is drawn from, best first. */

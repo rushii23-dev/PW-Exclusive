@@ -15,6 +15,8 @@ export {
 export { compare } from "./compare";
 export type { CategoryRow, Comparison, FindingDiff, NumberDiff } from "./compare";
 export { answerQuestion, ClauseIndex } from "./retrieve";
+export type { RetrievalHit } from "./retrieve";
+export { findInconsistencies } from "./inconsistencies";
 export { toPlainText } from "./checklist";
 export { CATEGORY_LABELS } from "./lexicon";
 export { GLOSSARY } from "./glossary";
@@ -27,6 +29,8 @@ export type {
   ClauseCategory,
   DocumentType,
   ExtractedEntity,
+  Inconsistency,
+  InconsistencyEvidence,
   JargonHit,
   Obligation,
   Party,

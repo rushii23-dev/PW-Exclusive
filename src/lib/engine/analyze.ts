@@ -10,6 +10,7 @@ import { buildChecklist, buildLawyerQuestions } from "./checklist";
 import { classifyClause } from "./classify";
 import { extractEntities } from "./entities";
 import { findJargon } from "./glossary";
+import { findInconsistencies } from "./inconsistencies";
 import { extractObligations } from "./obligations";
 import { computeReadability } from "./readability";
 import { segment } from "./segment";
@@ -132,5 +133,6 @@ export function analyzeDocument(text: string): Analysis {
     checklist: buildChecklist(findings),
     lawyerQuestions: buildLawyerQuestions(findings),
     glossary,
+    inconsistencies: findInconsistencies(clauses, trimmed),
   };
 }
