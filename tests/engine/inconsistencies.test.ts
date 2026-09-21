@@ -55,6 +55,20 @@ describe("findInconsistencies", () => {
     expect(hit!.explanation).toMatch(/60,000/);
   });
 
+  it("still flags the conflict when the sentence also mentions deductions", () => {
+    const found = inconsistencies(
+      "1. DEPOSIT\nThe Tenant shall pay a security deposit of Rs. 50,000.\n\n2. REFUND\nThe security deposit of Rs. 60,000 shall be refunded after deductions.",
+    );
+    expect(found.find((i) => i.id === "conflicting-deposit")).toBeDefined();
+  });
+
+  it("does not treat a deduction from the deposit as a second deposit figure", () => {
+    const found = inconsistencies(
+      "1. DEPOSIT\nThe Tenant shall pay a security deposit of Rs. 50,000.\n\n2. DAMAGE\nRs. 5,000 shall be deducted from the deposit for each broken fixture.",
+    );
+    expect(found.find((i) => i.id === "conflicting-deposit")).toBeUndefined();
+  });
+
   it("does not treat an escalation as a conflicting amount", () => {
     const found = inconsistencies(
       "1. RENT\nThe monthly rent is Rs. 20,000.\n\n2. ESCALATION\nThe rent shall increase to Rs. 21,000 after eleven months.",
