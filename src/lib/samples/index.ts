@@ -190,6 +190,43 @@ Any dispute arising out of these Terms shall be resolved by final and binding ar
 11. GOVERNING LAW
 These Terms shall be governed by the laws of the State of California, and you submit to the exclusive jurisdiction of the courts located in San Francisco County for any matters not subject to arbitration.`;
 
+/**
+ * A PG / shared-accommodation licence drafted carelessly on purpose: words and
+ * figures disagree, the deposit is stated twice with different amounts, two
+ * cities are named for disputes, and a clause points at one that isn't there.
+ * It exists to show the contradiction checks at work.
+ */
+export const PG_LICENCE = `PAYING GUEST ACCOMMODATION LICENCE
+
+This Licence is made on 10th June 2025 between Mrs. Sunita Deshmukh (the "Owner") and Mr. Arjun Nair (the "Guest") for a furnished room at 22 Lake View Residency, Pune.
+
+1. TERM
+The licence is granted for a period of eleven (11) months starting 1st July 2025.
+
+2. FEES
+The Guest shall pay a monthly fee of Rs. 14,000, which includes food and electricity, on or before the 3rd of each month. A late fee of Rs. 200 per day shall apply after the due date.
+
+3. SECURITY DEPOSIT
+The Guest shall pay a security deposit of Rs. 28,000 before moving in.
+
+4. REFUND OF DEPOSIT
+The security deposit of Rs. 42,000 shall be refunded within thirty (30) days of the Guest vacating, after deductions for damage as set out in Clause 11.
+
+5. HOUSE RULES
+Guests are not permitted after 10 PM. Cooking in the room is not allowed. The Owner may enter the room at any time for inspection.
+
+6. TERMINATION BY THE GUEST
+The Guest may terminate this licence by giving thirty (45) days written notice to the Owner.
+
+7. TERMINATION BY THE OWNER
+The Owner may terminate this licence at any time by giving seven (7) days notice, without assigning any reason.
+
+8. JURISDICTION
+The courts at Pune shall have exclusive jurisdiction over any dispute arising from this licence.
+
+9. DISPUTES
+Any claim by the Guest shall be heard only by the courts of Mumbai.`;
+
 export const SAMPLES: SampleDocument[] = [
   {
     id: "rental",
@@ -220,6 +257,12 @@ export const SAMPLES: SampleDocument[] = [
     title: "Subscription terms",
     description: "A fitness app's terms: auto-renewal, unilateral changes, your data shared, your content licensed forever.",
     text: SUBSCRIPTION_TOS,
+  },
+  {
+    id: "pg",
+    title: "PG licence (has errors)",
+    description: "A paying-guest agreement that contradicts itself: two deposit amounts, mismatched numbers, two courts and a missing clause.",
+    text: PG_LICENCE,
   },
 ];
 
