@@ -2,13 +2,17 @@
 
 /**
  * Document Q&A. Stateless by design: each question re-sends the document,
- * so the server holds nothing between requests. Answers always quote their
- * clause, and "the document doesn't say" is rendered as a first-class answer.
+ * so the server holds nothing between requests. Gemini answers in the
+ * reader's language; every quote it shows has been checked against the
+ * document, and "the document doesn't say" is a first-class answer.
  */
 
 import { CornerDownLeft, MessageCircleQuestion } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { useAi } from "@/components/ai/AiContext";
+import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
+import { postJson } from "@/lib/client/api";
 import type { Answer } from "@/lib/engine";
 
 interface Exchange {
@@ -24,7 +28,8 @@ const SUGGESTED = [
   "What am I not allowed to do?",
 ];
 
-export function AskPanel({ documentText }: { documentText: string }) {
+export function AskPanel() {
+  const { documentText, language, configured } = useAi();
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState(false);
@@ -37,43 +42,27 @@ export function AskPanel({ documentText }: { documentText: string }) {
     setQuestion("");
     setExchanges((prev) => [...prev, { question: trimmed, answer: null }]);
 
-    try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: documentText, question: trimmed }),
-      });
-      const json = await res.json();
-      setExchanges((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (res.ok) {
-          next[next.length - 1] = { ...last, answer: json.answer };
-        } else {
-          next[next.length - 1] = {
-            ...last,
-            error: json?.error?.message ?? "Something went wrong. Please try again.",
-          };
-        }
-        return next;
-      });
-    } catch {
-      setExchanges((prev) => {
-        const next = [...prev];
-        next[next.length - 1] = {
-          ...next[next.length - 1],
-          error: "Could not reach the server. Please try again.",
-        };
-        return next;
-      });
-    } finally {
-      setPending(false);
-      // Bring the new answer into view without stealing focus.
-      requestAnimationFrame(() =>
-        logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }),
-      );
-    }
+    const result = await postJson<{ answer: Answer }>("/api/ask", {
+      text: documentText,
+      question: trimmed,
+      language,
+    });
+    setExchanges((prev) => {
+      const next = [...prev];
+      const last = next[next.length - 1];
+      next[next.length - 1] = result.ok
+        ? { ...last, answer: result.data.answer }
+        : { ...last, error: result.error };
+      return next;
+    });
+    setPending(false);
+    // Bring the new answer into view without stealing focus.
+    requestAnimationFrame(() =>
+      logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }),
+    );
   }
+
+  const lastFollowUps = exchanges.at(-1)?.answer?.followUps ?? [];
 
   return (
     <div className="sheet rounded-2xl border border-border">
@@ -89,8 +78,9 @@ export function AskPanel({ documentText }: { documentText: string }) {
               aria-hidden
             />
             <p className="mt-2 text-sm text-muted-foreground">
-              Ask anything about this document. Answers are quoted from its own
-              clauses — never invented.
+              Ask anything about this document{configured ? ", in any language" : ""}.
+              Every answer quotes the clauses it comes from — and says so plainly
+              when the document is silent.
             </p>
             <ul className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTED.map((s) => (
@@ -130,7 +120,10 @@ export function AskPanel({ documentText }: { documentText: string }) {
             )}
             {exchange.answer && (
               <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md border border-border bg-background px-4 py-3 text-sm leading-relaxed">
-                <p>{exchange.answer.response}</p>
+                <div className="mb-1.5">
+                  {exchange.answer.source === "ai" ? <GeminiBadge /> : <EngineBadge />}
+                </div>
+                <p className="whitespace-pre-line">{exchange.answer.response}</p>
                 {exchange.answer.citations.length > 0 && (
                   <div className="mt-3 border-t border-dashed border-border pt-2.5">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -138,7 +131,7 @@ export function AskPanel({ documentText }: { documentText: string }) {
                     </p>
                     <ul className="mt-1.5 space-y-1.5">
                       {exchange.answer.citations.map((c) => (
-                        <li key={c.clauseId} className="text-xs text-muted-foreground">
+                        <li key={`${c.clauseId}-${c.quote}`} className="text-xs text-muted-foreground">
                           <span className="font-semibold">
                             {c.heading ?? c.clauseId.replace("clause-", "Clause ")}:
                           </span>{" "}
@@ -153,6 +146,22 @@ export function AskPanel({ documentText }: { documentText: string }) {
           </div>
         ))}
       </div>
+
+      {lastFollowUps.length > 0 && !pending && (
+        <ul className="flex flex-wrap gap-2 border-t border-border px-4 py-3" aria-label="Suggested follow-up questions">
+          {lastFollowUps.map((f) => (
+            <li key={f}>
+              <button
+                type="button"
+                onClick={() => ask(f)}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              >
+                {f}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <form
         className="flex gap-2 border-t border-border p-3"
