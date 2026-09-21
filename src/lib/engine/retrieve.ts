@@ -133,7 +133,7 @@ export class ClauseIndex {
 }
 
 /** The best supporting sentence from a clause, for the quoted citation. */
-function bestQuote(clause: Clause, query: string): string {
+export function bestQuote(clause: Clause, query: string): string {
   const queryTerms = new Set(tokenize(query).filter((t) => !STOPWORDS.has(t)));
   for (const t of [...queryTerms]) for (const s of SYNONYMS[t] ?? []) queryTerms.add(s);
 
