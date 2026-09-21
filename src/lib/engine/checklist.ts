@@ -98,6 +98,16 @@ export function toPlainText(analysis: Analysis): string {
     }
     lines.push("");
   }
+  if (analysis.inconsistencies.length > 0) {
+    lines.push("WHERE THE DOCUMENT CONTRADICTS ITSELF");
+    for (const inc of analysis.inconsistencies) {
+      lines.push(`  ${inc.title}: ${inc.explanation}`);
+      for (const e of inc.evidence) {
+        lines.push(`    - ${e.heading ?? e.clauseId}: "${e.quote}"`);
+      }
+    }
+    lines.push("");
+  }
   if (analysis.checklist.length > 0) {
     lines.push("BEFORE YOU SIGN");
     for (const item of analysis.checklist) lines.push(`  [ ] ${item.text} (${item.because})`);
