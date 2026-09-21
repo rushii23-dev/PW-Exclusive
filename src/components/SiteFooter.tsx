@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export function SiteFooter() {
@@ -11,14 +11,21 @@ export function SiteFooter() {
               ClearClause
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Plain-language analysis of legal documents. Everything is
+              Plain-language analysis of legal documents, explained by Google
+              Gemini and checked against your document. Everything is
               processed in memory and forgotten when the response is sent —
               no accounts, no storage, no tracking.
             </p>
-            <p className="inline-flex items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-xs font-medium text-ok">
-              <ShieldCheck className="size-3.5" aria-hidden />
-              Documents are never stored
-            </p>
+            <div className="flex flex-wrap gap-2">
+              <p className="inline-flex items-center gap-2 rounded-full bg-ok-soft px-3 py-1.5 text-xs font-medium text-ok">
+                <ShieldCheck className="size-3.5" aria-hidden />
+                Documents are never stored
+              </p>
+              <p className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1.5 text-xs font-medium text-primary-strong">
+                <Sparkles className="size-3.5" aria-hidden />
+                Powered by Gemini
+              </p>
+            </div>
           </div>
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm">
             <Link className="text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline" href="/analyze">
