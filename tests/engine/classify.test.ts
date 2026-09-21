@@ -95,3 +95,10 @@ describe("paying-guest wording", () => {
     expect(findings.map((f) => f.ruleId)).toContain("unilateral-termination");
   });
 });
+
+describe("repairs shifted to an occupant", () => {
+  it("applies when the agreement calls the occupant a guest", () => {
+    const { findings } = classifyClause("The Guest shall bear the cost of all repairs to the room and furniture.");
+    expect(findings.map((f) => f.ruleId)).toContain("tenant-repairs");
+  });
+});
