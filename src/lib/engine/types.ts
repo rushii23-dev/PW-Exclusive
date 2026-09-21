@@ -1,10 +1,10 @@
 /**
  * Domain model for the analysis engine.
  *
- * Everything here is produced deterministically from the document text. A
- * language model may later *rephrase* fields for readability, but it never
- * adds a clause, a risk, an amount or a quote that the engine did not find —
- * that inversion is what keeps the output verifiable against the document.
+ * Everything here is produced deterministically from the document text.
+ * Gemini builds its explanations on top of these facts, and anything it
+ * quotes is checked against the clauses defined here before it is shown —
+ * that is what keeps the output verifiable against the document.
  */
 
 /** Categories a clause can belong to. A clause may match several. */
