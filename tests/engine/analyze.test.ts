@@ -6,6 +6,7 @@ import {
   DocumentTooSmallError,
   MAX_DOCUMENT_CHARS,
 } from "@/lib/engine/analyze";
+import { toPlainText } from "@/lib/engine/checklist";
 import {
   EMPLOYMENT_CONTRACT,
   FREELANCE_AGREEMENT,
@@ -157,4 +158,20 @@ describe("analyzeDocument — every sample end to end", () => {
       }
     },
   );
+});
+
+describe("toPlainText export", () => {
+  it("includes contradictions with both quoted sides", () => {
+    const analysis = analyzeDocument(
+      "LEASE\n\n1. DEPOSIT\nThe Tenant shall pay a security deposit of Rs. 50,000.\n\n2. REFUND\nThe security deposit of Rs. 60,000 shall be refunded within thirty days.",
+    );
+    const text = toPlainText(analysis);
+    expect(text).toContain("WHERE THE DOCUMENT CONTRADICTS ITSELF");
+    expect(text).toContain("Rs. 50,000");
+    expect(text).toContain("Rs. 60,000");
+  });
+
+  it("leaves the section out when there is nothing to report", () => {
+    expect(toPlainText(analyzeDocument(RENTAL_AGREEMENT))).not.toContain("CONTRADICTS ITSELF");
+  });
 });
