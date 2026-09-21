@@ -1,4 +1,4 @@
-import { AlertTriangle, Cpu, Eye, Lock, Scale, TestTubes } from "lucide-react";
+import { AlertTriangle, Cpu, Eye, Lock, Sparkles, TestTubes } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -9,43 +9,43 @@ import { LEXICON } from "@/lib/engine/lexicon";
 export const metadata: Metadata = {
   title: "How it works",
   description:
-    "The architecture and the honest limits: deterministic analysis, evidence for every flag, optional AI that only rephrases, and no storage of your documents.",
+    "The architecture and the honest limits: rules establish the facts, Gemini explains them, every AI quote is verified against your document, and nothing is stored.",
 };
 
 const PRINCIPLES = [
   {
     icon: Cpu,
-    title: "Deterministic first",
-    body: `The analysis is produced by rules, not by a model's recollection: a clause segmenter, a curated lexicon of ${LEXICON.length} risk patterns, entity extraction for every amount and deadline, and BM25 retrieval for questions. The same document always produces the same result — which is why the engine can be unit-tested line by line.`,
+    title: "Rules establish the facts",
+    body: `A deterministic engine does the part that must never be wrong: a clause segmenter, a curated lexicon of ${LEXICON.length} risk patterns, extraction of every amount and deadline, contradiction checks, and BM25 retrieval. The same document always produces the same findings — which is why they can be unit-tested line by line.`,
+  },
+  {
+    icon: Sparkles,
+    title: "Gemini does the explaining",
+    body: "Google's Gemini writes the brief, answers questions, explains individual clauses, lays out your options for a situation you describe, compares documents from your side, and reads for contradictions the rules can't see. It reads scanned PDFs and photos too, and writes in any of 12 languages.",
   },
   {
     icon: Eye,
-    title: "Every flag carries its receipt",
-    body: "A finding is only ever attached to the exact sentence that triggered it, and that sentence is shown with the flag. Answers to questions quote the clause they came from. If retrieval isn't confident, the answer is “this document doesn't say” — a legal tool that guesses is worse than no tool.",
-  },
-  {
-    icon: Scale,
-    title: "AI may rephrase, never assert",
-    body: "When an AI brief is enabled, Claude receives the engine's findings — not the authority to add any. It rewrites them into a friendlier paragraph and nothing else. With no API key configured, the product is fully functional; the analysis never depended on the model.",
+    title: "No quote, no claim",
+    body: "Gemini must cite clauses by id and quote them word for word. Every quote is checked against your document before you see it; one that isn't really there is discarded, and an answer or option left without verified support is dropped — the rule engine answers instead. The document is treated as untrusted data, so instructions hidden inside it are never followed.",
   },
   {
     icon: Lock,
-    title: "Nothing to leak",
-    body: "Documents are processed in memory and never written to disk, logged, or sent to third parties (the optional AI brief sends only the engine's findings to the AI provider). There are no accounts and no analytics on document content. Requests are validated, size-capped and rate-limited.",
+    title: "Private by design",
+    body: "Documents are processed in memory and never written to disk, logged or kept. The clauses needed for an AI answer are sent to Gemini for that request only. There are no accounts and no analytics on document content; requests are validated, size-capped and rate-limited.",
   },
   {
     icon: TestTubes,
     title: "Measured, not asserted",
-    body: `The engine ships with an extensive automated test suite: segmentation, classification, entity extraction, retrieval confidence, comparison symmetry, API validation and rate limiting. The ${GLOSSARY.length}-term glossary and every sample document double as test fixtures — the demo you see is the behaviour the tests pin down.`,
+    body: `An extensive automated test suite covers segmentation, classification, extraction, contradiction checks, retrieval, comparison, file reading, and every AI feature — including tests that feed the AI invented quotes and confirm they never reach the reader. The ${GLOSSARY.length}-term glossary and every sample document double as fixtures.`,
   },
 ];
 
 const LIMITS = [
-  "It is not legal advice, and no output should be treated as a lawyer's opinion. The action plan exists to make a professional consultation shorter and better.",
-  "It detects known patterns. A one-sided clause drafted in a novel way can pass unflagged, so a clean report is not a verdict of fairness.",
-  "It reads English-language documents. Agreements in other languages, and scanned documents that aren't text, are out of scope today.",
+  "It is not legal advice, and no output should be treated as a lawyer's opinion. The action plan and questions exist to make a professional consultation shorter and better.",
+  "The rule engine detects known patterns; a one-sided clause drafted in a novel way can pass unflagged. Gemini catches more, but a clean report is still not a verdict of fairness.",
+  "AI explanations can be imperfect even when their quotes are verified. The quoted clause is always shown next to the explanation — read it yourself before relying on it.",
   "It is jurisdiction-agnostic: it tells you an arbitration clause is there and what it means, but whether it is enforceable where you live is a question for a professional.",
-  "Extraction is deterministic but not omniscient — unusual formatting can hide an amount or a date from the patterns. The clause text is always shown so you can check.",
+  "Text read from photos and scans can contain mistakes. Check the extracted text against the original before analysing.",
 ];
 
 export default function AboutPage() {
