@@ -3,8 +3,14 @@
 import { Check, Loader2, Minus, Scale } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { useAiStatus, useLanguagePreference } from "@/components/ai/AiContext";
+import { GeminiBadge } from "@/components/ai/GeminiBadge";
+import { LanguagePicker } from "@/components/ai/LanguagePicker";
+import { CompareVerdictCard } from "@/components/compare/CompareVerdictCard";
 import { RiskBadge } from "@/components/RiskBadge";
 import { RiskMeter } from "@/components/RiskMeter";
+import type { CompareVerdict } from "@/lib/ai/compare";
+import { postJson } from "@/lib/client/api";
 import { MAX_DOCUMENT_CHARS, type Analysis, type Comparison } from "@/lib/engine";
 import { SAMPLES } from "@/lib/samples";
 import { cn } from "@/lib/utils";
@@ -13,6 +19,7 @@ interface CompareResponse {
   a: Analysis;
   b: Analysis;
   comparison: Comparison;
+  ai: { available: boolean; used: boolean; verdict: CompareVerdict | null };
 }
 
 function DocumentInput({
@@ -81,32 +88,28 @@ export function Comparer() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CompareResponse | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const aiStatus = useAiStatus();
+  const [language, setLanguage] = useLanguagePreference();
 
   async function compare() {
     if (pending) return;
     setPending(true);
     setError(null);
-    try {
-      const res = await fetch("/api/compare", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ textA: textA.trim(), textB: textB.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json?.error?.message ?? "Something went wrong. Please try again.");
-        setResult(null);
-        return;
-      }
-      setResult(json as CompareResponse);
-      requestAnimationFrame(() =>
-        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      );
-    } catch {
-      setError("Could not reach the server. Check your connection and try again.");
-    } finally {
-      setPending(false);
+    const res = await postJson<CompareResponse>("/api/compare", {
+      textA: textA.trim(),
+      textB: textB.trim(),
+      language,
+    });
+    setPending(false);
+    if (!res.ok) {
+      setError(res.error);
+      setResult(null);
+      return;
     }
+    setResult(res.data);
+    requestAnimationFrame(() =>
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
 
   return (
@@ -130,10 +133,20 @@ export function Comparer() {
             )}
             {pending ? "Comparing…" : "Compare documents"}
           </button>
-          <p className="text-xs text-muted-foreground">
-            Try the rental agreement against the mutual NDA to see coverage gaps.
-          </p>
+          {aiStatus.configured && <GeminiBadge label="Gemini on" />}
+          {aiStatus.configured && (
+            <LanguagePicker
+              id="compare-language"
+              value={language}
+              onChange={setLanguage}
+              className="sm:ml-auto"
+            />
+          )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          Try the freelance agreement against the employment contract to see how two ways of
+          being paid for work differ.
+        </p>
         {error && (
           <p role="alert" className="rounded-xl bg-risk-high-soft p-4 text-sm text-risk-high">
             {error}
@@ -151,6 +164,8 @@ export function Comparer() {
 
         {result && (
           <div className="animate-fade-in-up space-y-6">
+            {result.ai.verdict && <CompareVerdictCard verdict={result.ai.verdict} />}
+
             {/* ── Verdicts ────────────────────────────────────────── */}
             <section
               aria-labelledby="verdict-heading"
