@@ -14,6 +14,25 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * A deliberately light stemmer: enough that "renew", "renews", "renewed" and
+ * "renewal" meet, not so much that unrelated words collide. It is applied to
+ * both sides of every comparison, so the stems only need to agree with each
+ * other — they don't need to be real words.
+ */
+export function stem(word: string): string {
+  if (word.length <= 3 || /\d/.test(word)) return word;
+  let w = word;
+  if (w.endsWith("ies") && w.length > 4) w = `${w.slice(0, -3)}y`;
+  else if (w.endsWith("ing") && w.length > 5) w = w.slice(0, -3);
+  else if (w.endsWith("ation") && w.length > 7) w = w.slice(0, -3);
+  else if (w.endsWith("ed") && w.length > 4) w = w.slice(0, -2);
+  else if (w.endsWith("al") && w.length > 6) w = w.slice(0, -2);
+  else if (w.endsWith("s") && !w.endsWith("ss") && w.length > 3) w = w.slice(0, -1);
+  if (w.endsWith("e") && w.length > 4) w = w.slice(0, -1);
+  return w;
+}
+
+/**
  * Sentence split tuned for legal prose. Abbreviations that end with a period
  * ("No.", "Sec.", "Rs.", "e.g.") must not end a sentence, and clause
  * enumerators like "(a)" continue the sentence they sit in.
