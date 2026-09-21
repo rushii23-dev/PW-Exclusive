@@ -1,0 +1,39 @@
+/**
+ * A stand-in for the Gemini SDK. Tests queue the replies the "model" will
+ * give, and can inspect every request it received.
+ */
+
+import { vi } from "vitest";
+
+export interface CapturedRequest {
+  model: string;
+  contents: string;
+  config: { systemInstruction?: string; responseJsonSchema?: unknown; responseMimeType?: string };
+}
+
+export const gemini = {
+  requests: [] as CapturedRequest[],
+  replies: [] as Array<unknown | Error>,
+  /** Queue a JSON reply (object) or a failure (Error). */
+  reply(value: unknown | Error) {
+    this.replies.push(value);
+  },
+  reset() {
+    this.requests = [];
+    this.replies = [];
+  },
+};
+
+export const generateContent = vi.fn(async (req: CapturedRequest) => {
+  gemini.requests.push(req);
+  const next = gemini.replies.shift();
+  if (next instanceof Error) throw next;
+  if (next === undefined) throw new Error("mock-gemini: no reply queued");
+  return { text: typeof next === "string" ? next : JSON.stringify(next), candidates: [] };
+});
+
+vi.mock("@google/genai", () => ({
+  GoogleGenAI: class {
+    models = { generateContent };
+  },
+}));
