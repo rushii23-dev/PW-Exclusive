@@ -3,14 +3,24 @@
 import { FileUp, Loader2, ScanSearch, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AnalysisView, type AiBriefPayload } from "@/components/analyze/AnalysisView";
+import { AiProvider, useAiStatus, useLanguagePreference } from "@/components/ai/AiContext";
+import { GeminiBadge } from "@/components/ai/GeminiBadge";
+import { LanguagePicker } from "@/components/ai/LanguagePicker";
+import { AnalysisView } from "@/components/analyze/AnalysisView";
+import type { AiBrief } from "@/lib/ai/brief";
+import { postJson } from "@/lib/client/api";
 import { MAX_DOCUMENT_CHARS, type Analysis } from "@/lib/engine";
 import { SAMPLES, type SampleDocument } from "@/lib/samples";
 import { cn } from "@/lib/utils";
 
 interface AnalyzeResponse {
   analysis: Analysis;
-  ai: { available: boolean; brief: AiBriefPayload | null };
+  ai: {
+    available: boolean;
+    used: boolean;
+    brief: AiBrief | null;
+    contradictionsChecked: boolean;
+  };
 }
 
 /** Only ever read as text, capped well below the engine limit. */
@@ -23,8 +33,8 @@ export function Analyzer({
   initialSample: SampleDocument | null;
 }) {
   const [text, setText] = useState(initialSample?.text ?? "");
-  const [useAi, setUseAi] = useState(false);
-  const [aiAvailable, setAiAvailable] = useState(false);
+  const aiStatus = useAiStatus();
+  const [language, setLanguage] = useLanguagePreference();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
@@ -32,54 +42,37 @@ export function Analyzer({
   const resultRef = useRef<HTMLDivElement>(null);
   const autoRan = useRef(false);
 
-  useEffect(() => {
-    // Discover whether the optional AI layer is configured; the toggle only
-    // appears when it is, so nobody is offered a feature that cannot run.
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then((json) => setAiAvailable(json.aiEnhancement === "configured"))
-      .catch(() => setAiAvailable(false));
-  }, []);
-
   const analyze = useCallback(
-    async (input: string, withAi: boolean) => {
+    async (input: string) => {
       const trimmed = input.trim();
       if (!trimmed || pending) return;
       setPending(true);
       setError(null);
 
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text: trimmed, ai: withAi }),
-        });
-        const json = await res.json();
-        if (!res.ok) {
-          setError(json?.error?.message ?? "Something went wrong. Please try again.");
-          setResult(null);
-          return;
-        }
-        setResult(json as AnalyzeResponse);
-        setAnalyzedText(trimmed);
-        requestAnimationFrame(() =>
-          resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-        );
-      } catch {
-        setError("Could not reach the server. Check your connection and try again.");
+      const result = await postJson<AnalyzeResponse>("/api/analyze", {
+        text: trimmed,
+        language,
+      });
+      setPending(false);
+      if (!result.ok) {
+        setError(result.error);
         setResult(null);
-      } finally {
-        setPending(false);
+        return;
       }
+      setResult(result.data);
+      setAnalyzedText(trimmed);
+      requestAnimationFrame(() =>
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
     },
-    [pending],
+    [pending, language],
   );
 
   // Deep link: /analyze?sample=rental runs the seeded sample immediately.
   useEffect(() => {
     if (autoRan.current || !initialSample) return;
     autoRan.current = true;
-    void analyze(initialSample.text, false);
+    void analyze(initialSample.text);
   }, [initialSample, analyze]);
 
   function onFileChosen(file: File | undefined) {
@@ -98,11 +91,18 @@ export function Analyzer({
   }
 
   return (
+    <AiProvider
+      status={aiStatus}
+      language={language}
+      setLanguage={setLanguage}
+      documentText={analyzedText}
+    >
     <div className="space-y-8">
       <section aria-labelledby="input-heading" className="sheet rounded-2xl border border-border p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="input-heading" className="font-sans text-base font-semibold">
+          <h2 id="input-heading" className="flex items-center gap-2 font-sans text-base font-semibold">
             Your document
+            {aiStatus.configured && <GeminiBadge label="Gemini on" />}
           </h2>
           <p className="text-xs text-muted-foreground">
             Processed in memory, never stored.
@@ -143,7 +143,7 @@ export function Analyzer({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => analyze(text, useAi)}
+            onClick={() => analyze(text)}
             disabled={pending || text.trim().length === 0}
             className="glow-primary inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none disabled:hover:scale-100"
           >
@@ -169,16 +169,8 @@ export function Analyzer({
             />
           </label>
 
-          {aiAvailable && (
-            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={useAi}
-                onChange={(e) => setUseAi(e.target.checked)}
-                className="size-4 accent-[var(--primary)]"
-              />
-              Add an AI-written brief
-            </label>
+          {aiStatus.configured && (
+            <LanguagePicker value={language} onChange={setLanguage} className="sm:ml-auto" />
           )}
         </div>
 
@@ -194,7 +186,7 @@ export function Analyzer({
                   onClick={() => {
                     setText(sample.text);
                     setError(null);
-                    void analyze(sample.text, useAi);
+                    void analyze(sample.text);
                   }}
                   title={sample.description}
                   className={cn(
@@ -228,10 +220,11 @@ export function Analyzer({
           <AnalysisView
             analysis={result.analysis}
             aiBrief={result.ai.brief}
-            documentText={analyzedText}
+            aiCheckedContradictions={result.ai.contradictionsChecked}
           />
         )}
       </div>
     </div>
+    </AiProvider>
   );
 }
