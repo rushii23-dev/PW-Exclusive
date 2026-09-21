@@ -380,7 +380,7 @@ export const LEXICON: LexiconRule[] = [
     category: "maintenance",
     level: "medium",
     label: "Repairs shifted to you",
-    pattern: /\b(?:tenant|lessee|licensee|guest|occupant)\s+(?:shall|will|is\s+responsible\s+(?:for|to))\s+(?:\w+\s+){0,6}?(?:repair|maintain|maintenance|upkeep)\b/i,
+    pattern: /\b(?:tenant|lessee|licensee|guest|occupant)\s+(?:shall|will|is\s+responsible\s+(?:for|to))\s+(?:\w+\s+){0,6}?(?:repairs?|maintain|maintenance|upkeep)\b/i,
     explanation:
       "Maintenance costs that usually fall on the owner are moved to you. 'All repairs' can include structural problems you did not cause.",
     advice:
