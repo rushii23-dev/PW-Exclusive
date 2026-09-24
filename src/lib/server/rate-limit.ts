@@ -7,11 +7,20 @@
  * nothing after its window slides past.
  */
 
+import "server-only";
+
 interface Window {
   timestamps: number[];
 }
 
 const WINDOW_MS = 60_000;
+
+/**
+ * Hard ceiling on tracked clients. A flood from rotating addresses (IPv6
+ * makes those cheap) could otherwise grow the table without bound; past the
+ * ceiling the least recently seen clients are forgotten first.
+ */
+export const MAX_TRACKED_CLIENTS = 10_000;
 
 const buckets = new Map<string, Window>();
 
@@ -30,19 +39,28 @@ export function checkRateLimit(
   const cutoff = now - WINDOW_MS;
 
   // Prune the whole table occasionally so idle keys don't accumulate.
-  if (buckets.size > 10_000) {
+  if (buckets.size >= MAX_TRACKED_CLIENTS) {
     for (const [k, w] of buckets) {
       if (w.timestamps.length === 0 || w.timestamps[w.timestamps.length - 1] < cutoff) {
         buckets.delete(k);
       }
     }
+    // Still full of live clients: evict the least recently seen. A Map
+    // iterates in insertion order and every hit re-inserts its key below,
+    // so the first keys are the stalest.
+    for (const k of buckets.keys()) {
+      if (buckets.size < MAX_TRACKED_CLIENTS) break;
+      buckets.delete(k);
+    }
   }
 
   let bucket = buckets.get(key);
-  if (!bucket) {
+  if (bucket) {
+    buckets.delete(key);
+  } else {
     bucket = { timestamps: [] };
-    buckets.set(key, bucket);
   }
+  buckets.set(key, bucket);
   bucket.timestamps = bucket.timestamps.filter((t) => t > cutoff);
 
   if (bucket.timestamps.length >= limitPerMinute) {
@@ -60,6 +78,11 @@ export function checkRateLimit(
     retryAfterSeconds: 0,
     remaining: limitPerMinute - bucket.timestamps.length,
   };
+}
+
+/** Test hook: how many clients are currently tracked. */
+export function trackedClientCount(): number {
+  return buckets.size;
 }
 
 /** Test hook: reset all windows. */
