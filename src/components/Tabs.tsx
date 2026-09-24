@@ -17,7 +17,16 @@ export interface TabDef {
   content: ReactNode;
 }
 
-export function Tabs({ tabs, className }: { tabs: TabDef[]; className?: string }) {
+export function Tabs({
+  tabs,
+  label,
+  className,
+}: {
+  tabs: TabDef[];
+  /** Accessible name for the tab list, e.g. "Analysis details". */
+  label: string;
+  className?: string;
+}) {
   const [active, setActive] = useState(tabs[0]?.id);
   const baseId = useId();
   const listRef = useRef<HTMLDivElement>(null);
@@ -41,7 +50,7 @@ export function Tabs({ tabs, className }: { tabs: TabDef[]; className?: string }
       <div
         ref={listRef}
         role="tablist"
-        aria-label="Analysis sections"
+        aria-label={label}
         className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/70 p-1"
         onKeyDown={onKeyDown}
       >
@@ -66,14 +75,20 @@ export function Tabs({ tabs, className }: { tabs: TabDef[]; className?: string }
             >
               {tab.label}
               {typeof tab.count === "number" && (
-                <span
-                  className={cn(
-                    "ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] tabular",
-                    selected ? "bg-primary-soft text-primary-strong" : "bg-muted",
-                  )}
-                >
-                  {tab.count}
-                </span>
+                <>
+                  {/* Read as "Clauses (12)", not "Clauses12": the space sits
+                      outside the badge, where no name computation trims it. */}{" "}
+                  <span
+                    className={cn(
+                      "ml-1 rounded-full px-1.5 py-0.5 text-[11px] tabular",
+                      selected ? "bg-primary-soft text-primary-strong" : "bg-muted",
+                    )}
+                  >
+                    <span className="sr-only">(</span>
+                    {tab.count}
+                    <span className="sr-only">)</span>
+                  </span>
+                </>
               )}
             </button>
           );
