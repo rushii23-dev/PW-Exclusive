@@ -132,3 +132,31 @@ describe("generateJson resilience", () => {
     expect(modelChain()[0]).toMatch(/flash-lite/);
   });
 });
+
+describe("when the reader's request goes away", () => {
+  it("makes no call at all for a request that is already cancelled", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    expect(await generateJson({ ...request, signal: controller.signal })).toBeNull();
+    expect(generateContent).not.toHaveBeenCalled();
+  });
+
+  it("tries no fallback model once the reader has left", async () => {
+    const controller = new AbortController();
+    generateContent.mockImplementation(async () => {
+      // The reader navigates away while the first model is busy.
+      controller.abort();
+      throw apiError(503, "high demand");
+    });
+    expect(await generateJson({ ...request, signal: controller.signal })).toBeNull();
+    expect(generateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands the signal to the SDK so the HTTP call itself is cancelled", async () => {
+    const controller = new AbortController();
+    generateContent.mockImplementation(async () => ({ text: '{"ok":true}', candidates: [] }));
+    await generateJson({ ...request, signal: controller.signal });
+    const [call] = generateContent.mock.calls[0] as unknown as [{ config: { abortSignal?: AbortSignal } }];
+    expect(call.config.abortSignal).toBe(controller.signal);
+  });
+});
