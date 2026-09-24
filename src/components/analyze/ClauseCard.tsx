@@ -20,6 +20,9 @@ export function ClauseCard({ clause }: { clause: Clause }) {
     <article
       className={cn(
         "print-atomic elev-xs rounded-2xl border bg-surface-raised p-5 transition-shadow hover:elev-sm",
+        // A long contract renders hundreds of cards; let the browser skip
+        // laying out the ones far off screen (they stay in the a11y tree).
+        "[contain-intrinsic-size:auto_16rem] [content-visibility:auto]",
         clause.risk === "high" ? "border-risk-high/40" : "border-border",
       )}
     >
@@ -43,7 +46,10 @@ export function ClauseCard({ clause }: { clause: Clause }) {
         </span>
       </header>
 
-      <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+      <p
+        id={`${clause.id}-text`}
+        className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground"
+      >
         {shown}
       </p>
       {needsExpand && (
@@ -51,7 +57,8 @@ export function ClauseCard({ clause }: { clause: Clause }) {
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-primary-strong hover:underline"
+          aria-controls={`${clause.id}-text`}
+          className="mt-1.5 inline-flex min-h-6 items-center gap-1 rounded text-xs font-semibold text-primary-strong hover:underline"
         >
           {expanded ? "Show less" : "Show the full clause"}
           <ChevronDown
@@ -83,7 +90,10 @@ export function ClauseCard({ clause }: { clause: Clause }) {
               </p>
               <p className="mt-2.5 flex gap-2 border-t border-foreground/10 pt-2.5 text-xs italic opacity-80">
                 <Quote className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                <span>“{finding.evidence}”</span>
+                <span>
+                  <span className="sr-only">Triggered by the words: </span>
+                  <q>{finding.evidence}</q>
+                </span>
               </p>
             </li>
           ))}
