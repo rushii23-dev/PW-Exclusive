@@ -3,7 +3,7 @@
 import { FileSearch, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -16,19 +16,34 @@ const NAV = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  // The menu belongs to the page it was opened on: navigating anywhere —
+  // a link, the back button — closes it without an effect to sync.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  function close({ returnFocus }: { returnFocus: boolean }) {
+    setOpenOn(null);
+    if (returnFocus) toggleRef.current?.focus();
+  }
 
   return (
-    <header className="elev-xs sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl backdrop-saturate-150">
+    <header
+      className="print-hidden elev-xs sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl backdrop-saturate-150"
+      onKeyDown={(e) => {
+        if (open && e.key === "Escape") close({ returnFocus: true });
+      }}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2.5 font-semibold tracking-tight"
+          className="flex items-center gap-2.5 rounded-lg font-semibold tracking-tight"
         >
           <span className="glow-primary grid size-9 place-items-center rounded-xl bg-gradient-to-br from-primary-strong to-primary text-primary-foreground">
             <FileSearch className="size-5" aria-hidden />
           </span>
           <span className="font-display text-lg tracking-tight">ClearClause</span>
+          <span className="sr-only">— home</span>
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-1 sm:flex">
@@ -59,11 +74,12 @@ export function SiteHeader() {
         </nav>
 
         <button
+          ref={toggleRef}
           type="button"
-          className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted sm:hidden"
+          className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted sm:hidden"
           aria-expanded={open}
           aria-controls="mobile-nav"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => (open ? close({ returnFocus: false }) : setOpenOn(pathname))}
         >
           <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
           {open ? <X className="size-5" aria-hidden /> : <Menu className="size-5" aria-hidden />}
@@ -73,7 +89,7 @@ export function SiteHeader() {
       {open && (
         <nav
           id="mobile-nav"
-          aria-label="Main"
+          aria-label="Main menu"
           className="elev-sm border-t border-border bg-surface-raised px-4 py-3 sm:hidden"
         >
           <ul className="flex flex-col gap-1">
@@ -82,7 +98,7 @@ export function SiteHeader() {
                 <Link
                   href={item.href}
                   aria-current={pathname.startsWith(item.href) ? "page" : undefined}
-                  onClick={() => setOpen(false)}
+                  onClick={() => close({ returnFocus: false })}
                   className={cn(
                     "block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     pathname.startsWith(item.href)
