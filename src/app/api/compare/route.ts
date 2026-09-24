@@ -10,16 +10,10 @@ import { z } from "zod";
 
 import { generateCompareVerdict } from "@/lib/ai/compare";
 import { isAiConfigured } from "@/lib/ai/gemini";
-import {
-  analyzeDocument,
-  compare,
-  DocumentTooLargeError,
-  DocumentTooSmallError,
-  type Analysis,
-  type Comparison,
-} from "@/lib/engine";
+import { compare } from "@/lib/engine";
+import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, parseBody, rateLimitOr429 } from "@/lib/server/http";
+import { bodyLimit, guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,34 +27,30 @@ const schema = z.object({
   language: languageField,
 });
 
-export async function POST(request: Request) {
-  const limited = rateLimitOr429(request, "compare", RATE_LIMIT_PER_MINUTE);
-  if (limited) return limited;
+const FAILURE = { code: "comparison_failed", message: "Could not compare the documents." };
 
-  const body = await parseBody(request, schema);
+export async function POST(request: Request) {
+  const blocked = guardRequest(request, "compare", RATE_LIMIT_PER_MINUTE);
+  if (blocked) return blocked;
+
+  const body = await parseBody(request, schema, { maxBytes: bodyLimit(2) });
   if (!body.ok) return body.response;
 
-  let a: Analysis;
-  let b: Analysis;
-  let comparison: Comparison;
-  try {
-    a = analyzeDocument(body.data.textA);
-    b = analyzeDocument(body.data.textB);
-    comparison = compare(a, b);
-  } catch (err) {
-    if (err instanceof DocumentTooSmallError || err instanceof DocumentTooLargeError) {
-      return errorResponse(422, "invalid_document", err.message);
-    }
-    return errorResponse(500, "comparison_failed", "Could not compare the documents.");
-  }
+  const a = analyzeOrError(body.data.textA, FAILURE);
+  if (!a.ok) return a.response;
+  const b = analyzeOrError(body.data.textB, FAILURE);
+  if (!b.ok) return b.response;
+  const comparison = compare(a.analysis, b.analysis);
 
   const useAi = body.data.ai && isAiConfigured();
-  const verdict = useAi ? await generateCompareVerdict(a, b, comparison, body.data.language) : null;
+  const verdict = useAi
+    ? await generateCompareVerdict(a.analysis, b.analysis, comparison, body.data.language, request.signal)
+    : null;
 
   return NextResponse.json({
-    a,
-    b,
+    a: a.analysis,
+    b: b.analysis,
     comparison,
-    ai: { available: isAiConfigured(), used: useAi, verdict },
+    ai: { available: isAiConfigured(), used: useAi, language: body.data.language, verdict },
   });
 }
