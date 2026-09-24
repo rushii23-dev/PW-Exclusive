@@ -108,6 +108,21 @@ export function toPlainText(analysis: Analysis): string {
     }
     lines.push("");
   }
+  if (analysis.keyFacts.length > 0) {
+    lines.push("KEY AMOUNTS, DATES AND PERIODS (exactly as written)");
+    for (const fact of analysis.keyFacts) lines.push(`  - ${fact.kind}: ${fact.text}`);
+    lines.push("");
+  }
+  const duties: Array<[string, Analysis["yourObligations"]]> = [
+    ["WHAT THE DOCUMENT REQUIRES OF YOU", analysis.yourObligations],
+    ["WHAT THE OTHER SIDE MUST DO", analysis.theirObligations],
+  ];
+  for (const [heading, list] of duties) {
+    if (list.length === 0) continue;
+    lines.push(heading);
+    for (const o of list) lines.push(`  - ${o.text}`);
+    lines.push("");
+  }
   if (analysis.checklist.length > 0) {
     lines.push("BEFORE YOU SIGN");
     for (const item of analysis.checklist) lines.push(`  [ ] ${item.text} (${item.because})`);
