@@ -2,9 +2,13 @@ import { AlertTriangle, ListChecks } from "lucide-react";
 
 import { GeminiBadge } from "@/components/ai/GeminiBadge";
 import type { AiBrief } from "@/lib/ai/brief";
+import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 
 /** Gemini's plain-language brief, built from the engine's findings only. */
-export function AiBriefCard({ brief }: { brief: AiBrief }) {
+export function AiBriefCard({ brief, language = "en" }: { brief: AiBrief; language?: LanguageCode }) {
+  // The page's own labels stay English; everything Gemini wrote is marked
+  // with its language so it is read aloud, and laid out, correctly.
+  const written = languageAttributes(language);
   return (
     <section
       aria-labelledby="brief-heading"
@@ -14,10 +18,10 @@ export function AiBriefCard({ brief }: { brief: AiBrief }) {
         <p className="eyebrow">Your brief</p>
         <GeminiBadge />
       </div>
-      <h2 id="brief-heading" className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
+      <h2 id="brief-heading" {...written} className="mt-2 text-xl font-semibold leading-snug sm:text-2xl">
         {brief.headline}
       </h2>
-      <div className="mt-3 space-y-2.5 text-[15px] leading-relaxed">
+      <div {...written} className="mt-3 space-y-2.5 text-[15px] leading-relaxed">
         {brief.paragraphs.map((p) => (
           <p key={p}>{p}</p>
         ))}
@@ -29,7 +33,7 @@ export function AiBriefCard({ brief }: { brief: AiBrief }) {
             <AlertTriangle className="size-4 text-risk-high" aria-hidden />
             What matters most
           </h3>
-          <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
+          <ul {...written} className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
             {brief.topConcerns.map((c) => (
               <li key={c.title} className="rounded-xl bg-surface-raised/80 p-3.5 ring-1 ring-border">
                 <p className="text-sm font-semibold">{c.title}</p>
@@ -46,9 +50,9 @@ export function AiBriefCard({ brief }: { brief: AiBrief }) {
             <ListChecks className="size-4 text-primary-strong" aria-hidden />
             Before you sign
           </h3>
-          <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed">
+          <ol {...written} className="mt-2 list-decimal space-y-1.5 ps-5 text-sm leading-relaxed">
             {brief.beforeYouSign.map((s) => (
-              <li key={s} className="pl-1">
+              <li key={s} className="ps-1">
                 {s}
               </li>
             ))}
