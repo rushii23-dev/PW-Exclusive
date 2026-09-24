@@ -6,7 +6,7 @@ import { generateContent } from "../ai/mock-gemini";
 import { POST as extractPost } from "@/app/api/extract/route";
 import { resetGeminiClient } from "@/lib/ai/gemini";
 import { analyzeDocument } from "@/lib/engine";
-import { detectKind, tidy } from "@/lib/server/extract";
+import { detectKind, sniffImage, tidy } from "@/lib/server/extract";
 import { resetRateLimits } from "@/lib/server/rate-limit";
 
 const LINES = [
@@ -58,6 +58,10 @@ async function makeDocx(paragraphs: string[]): Promise<Uint8Array> {
   );
   return zip.generateAsync({ type: "uint8array" });
 }
+
+/** The first bytes of real image files — enough for the signature check. */
+const PNG_HEADER = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+const JPEG_HEADER = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
 
 function upload(bytes: Uint8Array, name: string, type: string): Request {
   const form = new FormData();
@@ -133,7 +137,7 @@ describe("POST /api/extract", () => {
   });
 
   it("explains that photos need Gemini when no key is configured", async () => {
-    const res = await extractPost(upload(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), "scan.jpg", "image/jpeg"));
+    const res = await extractPost(upload(JPEG_HEADER, "scan.jpg", "image/jpeg"));
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe("ai_unavailable");
   });
@@ -142,7 +146,7 @@ describe("POST /api/extract", () => {
     process.env.GEMINI_API_KEY = "test-key";
     resetGeminiClient();
     generateContent.mockImplementation(async () => ({ text: LINES.join("\n\n"), candidates: [] }));
-    const res = await extractPost(upload(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), "scan.jpg", "image/jpeg"));
+    const res = await extractPost(upload(JPEG_HEADER, "scan.jpg", "image/jpeg"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.method).toBe("gemini-vision");
@@ -153,7 +157,7 @@ describe("POST /api/extract", () => {
     process.env.GEMINI_API_KEY = "test-key";
     resetGeminiClient();
     generateContent.mockImplementation(async () => ({ text: "NO_TEXT_FOUND", candidates: [] }));
-    const res = await extractPost(upload(new Uint8Array([1, 2, 3]), "blurry.png", "image/png"));
+    const res = await extractPost(upload(PNG_HEADER, "blurry.png", "image/png"));
     expect(res.status).toBe(422);
     expect((await res.json()).error.code).toBe("no_text_found");
   });
@@ -181,5 +185,96 @@ describe("POST /api/extract", () => {
       new Request("http://localhost/api/extract", { method: "POST", body: form }),
     );
     expect(res.status).toBe(422);
+  });
+});
+
+describe("sniffImage", () => {
+  it("names the real format from the first bytes, whatever the file is called", () => {
+    const riff = (tag: string) => new TextEncoder().encode(`RIFF\0\0\0\0${tag}VP8 `);
+    const ftyp = (brand: string) => new TextEncoder().encode(`\0\0\0\u0018ftyp${brand}`);
+    expect(sniffImage(PNG_HEADER)).toBe("image/png");
+    expect(sniffImage(JPEG_HEADER)).toBe("image/jpeg");
+    expect(sniffImage(riff("WEBP"))).toBe("image/webp");
+    expect(sniffImage(ftyp("heic"))).toBe("image/heic");
+    expect(sniffImage(ftyp("mif1"))).toBe("image/heif");
+    expect(sniffImage(riff("WAVE"))).toBeNull();
+    expect(sniffImage(ftyp("isom"))).toBeNull(); // an MP4 video, not a photo
+    expect(sniffImage(new TextEncoder().encode("%PDF-1.7"))).toBeNull();
+  });
+});
+
+describe("POST /api/extract — the bytes must match the claimed type", () => {
+  const text = new TextEncoder().encode(LINES.join("\n"));
+
+  it.each([
+    ["a text file renamed .pdf", text, "lease.pdf", "application/pdf"],
+    ["a text file renamed .docx", text, "lease.docx", ""],
+    ["a PDF renamed .jpg", makePdf(LINES), "scan.jpg", "image/jpeg"],
+    ["a binary file renamed .txt", new Uint8Array([0x4d, 0x5a, 0x00, 0x01, 0x02]), "notes.txt", "text/plain"],
+  ])("refuses %s with 415 before any parser or model sees it", async (_label, bytes, name, type) => {
+    process.env.GEMINI_API_KEY = "test-key";
+    resetGeminiClient();
+    const res = await extractPost(upload(bytes, name, type));
+    expect(res.status).toBe(415);
+    expect((await res.json()).error.code).toBe("file_type_mismatch");
+    expect(generateContent).not.toHaveBeenCalled();
+  });
+
+  it("explains a text file that is not UTF-8", async () => {
+    const res = await extractPost(upload(new Uint8Array([0x4c, 0x65, 0xe9, 0x61, 0x73, 0x65]), "lease.txt", "text/plain"));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.code).toBe("unreadable_file");
+  });
+
+  it("finds a PDF header behind a little leading junk, as PDF readers do", async () => {
+    const pdf = makePdf(LINES);
+    const padded = new Uint8Array(pdf.length + 3);
+    padded.set([0x0a, 0x0a, 0x0a]);
+    padded.set(pdf, 3);
+    const res = await extractPost(upload(padded, "lease.pdf", "application/pdf"));
+    expect(res.status).not.toBe(415);
+  });
+});
+
+describe("POST /api/extract — request guards", () => {
+  it("refuses a body that is not multipart form data", async () => {
+    const res = await extractPost(
+      new Request("http://localhost/api/extract", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ file: "x" }),
+      }),
+    );
+    expect(res.status).toBe(415);
+  });
+
+  it("stops reading a streamed upload that runs past the cap, even without a Content-Length", async () => {
+    let pulled = 0;
+    const chunk = new Uint8Array(256 * 1024);
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+    const res = await extractPost(
+      new Request("http://localhost/api/extract", {
+        method: "POST",
+        headers: { "content-type": "multipart/form-data; boundary=x" },
+        body: endless,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(res.status).toBe(413);
+    // It gave up just past 4 MB instead of buffering forever.
+    expect(pulled).toBeLessThan(6 * 1024 * 1024);
+  });
+
+  it("refuses uploads another website's page tries to make", async () => {
+    const req = upload(PNG_HEADER, "scan.png", "image/png");
+    req.headers.set("sec-fetch-site", "cross-site");
+    const res = await extractPost(req);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("cross_site_request");
   });
 });
