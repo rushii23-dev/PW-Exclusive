@@ -8,6 +8,10 @@
  * the product degrades to the rule engine, it never breaks.
  */
 
+// The API key lives behind this module; a client bundle must fail to build
+// rather than ever include it.
+import "server-only";
+
 import { GoogleGenAI } from "@google/genai";
 import type { ZodType } from "zod";
 
@@ -86,9 +90,12 @@ export function classifyFailure(err: unknown): Failure {
 async function withFallbacks<T>(
   feature: string,
   call: (model: string, timeoutMs: number) => Promise<T>,
+  signal?: AbortSignal,
 ): Promise<{ value: T; model: string } | null> {
   const started = Date.now();
   for (const model of modelChain()) {
+    // Nobody is waiting for the answer any more: try no further models.
+    if (signal?.aborted) return null;
     const remaining = TOTAL_BUDGET_MS - (Date.now() - started);
     if (remaining < MIN_ATTEMPT_MS) {
       console.warn(`[ai:${feature}] gave up: time budget spent`);
@@ -100,6 +107,7 @@ async function withFallbacks<T>(
       // The message comes from the API client (status, quota, timeout) and
       // never contains the prompt, so it is safe to log. The document is not.
       const message = err instanceof Error ? err.message.slice(0, 200) : "unknown error";
+      if (signal?.aborted) return null;
       const kind = classifyFailure(err);
       console.warn(`[ai:${feature}] ${model} failed (${kind}): ${message}`);
       if (kind === "fatal") return null;
@@ -149,6 +157,12 @@ export interface JsonRequest<T> {
   /** zod validator applied to the parsed reply. */
   validate: ZodType<T>;
   temperature?: number;
+  /**
+   * The reader's request. When it goes away (they navigated off, or a newer
+   * request replaced it), the call is cancelled and no fallback model is
+   * tried — nobody would see the answer.
+   */
+  signal?: AbortSignal;
 }
 
 export async function generateJson<T>(
@@ -168,8 +182,10 @@ export async function generateJson<T>(
         responseJsonSchema: req.schema,
         // Retries are decided above, where the time budget is known.
         httpOptions: { timeout, retryOptions: { attempts: 1 } },
+        abortSignal: req.signal,
       },
     }),
+    req.signal,
   );
   if (!outcome) return null;
 
@@ -211,6 +227,7 @@ const TRANSCRIBE_PROMPT = `Transcribe the complete text of this document exactly
 export async function transcribeDocument(file: {
   mimeType: string;
   data: Uint8Array;
+  signal?: AbortSignal;
 }): Promise<string | null> {
   if (!isAiConfigured()) return null;
   const outcome = await withFallbacks("transcribe", (model, timeout) =>
@@ -229,8 +246,10 @@ export async function transcribeDocument(file: {
         temperature: 0,
         maxOutputTokens: 32_768,
         httpOptions: { timeout, retryOptions: { attempts: 1 } },
+        abortSignal: file.signal,
       },
     }),
+    file.signal,
   );
   const text = outcome?.value.text?.trim();
   if (!text || text === "NO_TEXT_FOUND") return null;
