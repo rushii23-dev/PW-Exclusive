@@ -7,10 +7,9 @@
  */
 
 import { LEXICON } from "./lexicon";
+import { byLevelDesc, worseLevel } from "./risk";
 import { truncateAtWord } from "./text";
 import type { ClauseCategory, RiskFinding, RiskLevel } from "./types";
-
-const LEVEL_ORDER: Record<RiskLevel, number> = { high: 3, medium: 2, low: 1 };
 
 export interface Classification {
   categories: ClauseCategory[];
@@ -46,15 +45,9 @@ export function classifyClause(text: string): Classification {
     });
   }
 
-  findings.sort((a, b) => LEVEL_ORDER[b.level] - LEVEL_ORDER[a.level]);
+  findings.sort(byLevelDesc);
 
-  const risk =
-    findings.length === 0
-      ? null
-      : findings.reduce<RiskLevel>(
-          (worst, f) => (LEVEL_ORDER[f.level] > LEVEL_ORDER[worst] ? f.level : worst),
-          "low",
-        );
+  const risk = findings.reduce<RiskLevel | null>((worst, f) => worseLevel(worst, f.level), null);
 
   return { categories: [...categories], risk, findings };
 }

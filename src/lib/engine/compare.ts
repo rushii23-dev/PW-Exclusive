@@ -9,6 +9,7 @@
  */
 
 import { CATEGORY_LABELS } from "./lexicon";
+import { LEVEL_ORDER, worseLevel } from "./risk";
 import type { Analysis, ClauseCategory, RiskFinding, RiskLevel } from "./types";
 
 export interface CategoryRow {
@@ -43,22 +44,11 @@ export interface Comparison {
   verdicts: string[];
 }
 
-const LEVEL_ORDER: Record<RiskLevel, number> = { high: 3, medium: 2, low: 1 };
-
 function worstByCategory(analysis: Analysis): Map<ClauseCategory, RiskLevel | null> {
   const map = new Map<ClauseCategory, RiskLevel | null>();
   for (const clause of analysis.clauses) {
     for (const cat of clause.categories) {
-      const current = map.get(cat) ?? null;
-      const candidate = clause.risk;
-      if (
-        candidate &&
-        (!current || LEVEL_ORDER[candidate] > LEVEL_ORDER[current])
-      ) {
-        map.set(cat, candidate);
-      } else if (!map.has(cat)) {
-        map.set(cat, current);
-      }
+      map.set(cat, worseLevel(map.get(cat) ?? null, clause.risk));
     }
   }
   return map;
