@@ -2,8 +2,19 @@ import { HelpCircle, ThumbsUp, TriangleAlert } from "lucide-react";
 
 import { GeminiBadge } from "@/components/ai/GeminiBadge";
 import type { CompareVerdict } from "@/lib/ai/compare";
+import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 
-function Column({ title, items, tone }: { title: string; items: string[]; tone: "a" | "b" }) {
+function Column({
+  title,
+  items,
+  tone,
+  written,
+}: {
+  title: string;
+  items: string[];
+  tone: "a" | "b";
+  written: ReturnType<typeof languageAttributes>;
+}) {
   return (
     <div className="rounded-xl bg-surface-raised/85 p-4 ring-1 ring-border">
       <p
@@ -19,7 +30,7 @@ function Column({ title, items, tone }: { title: string; items: string[]; tone: 
       {items.length === 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">Nothing clearly better here.</p>
       ) : (
-        <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+        <ul {...written} className="mt-2 list-disc space-y-1.5 ps-5 text-sm leading-relaxed">
           {items.map((s) => (
             <li key={s}>{s}</li>
           ))}
@@ -30,7 +41,14 @@ function Column({ title, items, tone }: { title: string; items: string[]; tone: 
 }
 
 /** Gemini's reading of the structured comparison, from the reader's side. */
-export function CompareVerdictCard({ verdict }: { verdict: CompareVerdict }) {
+export function CompareVerdictCard({
+  verdict,
+  language = "en",
+}: {
+  verdict: CompareVerdict;
+  language?: LanguageCode;
+}) {
+  const written = languageAttributes(language);
   return (
     <section
       aria-labelledby="ai-verdict-heading"
@@ -42,11 +60,13 @@ export function CompareVerdictCard({ verdict }: { verdict: CompareVerdict }) {
         </h2>
         <GeminiBadge />
       </div>
-      <p className="mt-3 text-[15px] leading-relaxed">{verdict.overview}</p>
+      <p {...written} className="mt-3 text-[15px] leading-relaxed">
+        {verdict.overview}
+      </p>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Column title="Where Document A is better for you" items={verdict.betterInA} tone="a" />
-        <Column title="Where Document B is better for you" items={verdict.betterInB} tone="b" />
+        <Column title="Where Document A is better for you" items={verdict.betterInA} tone="a" written={written} />
+        <Column title="Where Document B is better for you" items={verdict.betterInB} tone="b" written={written} />
       </div>
 
       {verdict.watchOut.length > 0 && (
@@ -54,7 +74,7 @@ export function CompareVerdictCard({ verdict }: { verdict: CompareVerdict }) {
           <p className="flex items-center gap-1.5 text-sm font-semibold text-risk-high">
             <TriangleAlert className="size-4" aria-hidden /> Watch out in both
           </p>
-          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed">
+          <ul {...written} className="mt-1.5 list-disc space-y-1 ps-5 text-sm leading-relaxed">
             {verdict.watchOut.map((w) => (
               <li key={w}>{w}</li>
             ))}
@@ -67,7 +87,7 @@ export function CompareVerdictCard({ verdict }: { verdict: CompareVerdict }) {
           <p className="flex items-center gap-1.5 text-sm font-semibold">
             <HelpCircle className="size-4 text-primary-strong" aria-hidden /> Ask before you choose
           </p>
-          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed">
+          <ul {...written} className="mt-1.5 list-disc space-y-1 ps-5 text-sm leading-relaxed">
             {verdict.questionsToAsk.map((q) => (
               <li key={q}>{q}</li>
             ))}
