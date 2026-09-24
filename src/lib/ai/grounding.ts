@@ -14,9 +14,39 @@ import type { Clause, ClauseIndex, RetrievalHit } from "@/lib/engine";
 const WHOLE_DOCUMENT_CHARS = 60_000;
 const RETRIEVED_CLAUSES = 12;
 
+/** Tags the prompts use to fence untrusted text off from instructions. */
+const FENCE_TAGS = [
+  "document",
+  "clause",
+  "clause_to_explain",
+  "question",
+  "situation",
+  "analysis",
+  "comparison",
+  "rule_engine_flags",
+  "already_reported",
+];
+const FENCE_TAG_RE = new RegExp(`<(\\s*/?\\s*(?:${FENCE_TAGS.join("|")})\\b)`, "gi");
+/** Stands in for "<" inside untrusted text; reads the same, parses as nothing. */
+const FENCE_LOOKALIKE = "‹";
+
+/**
+ * Make untrusted text safe to place inside a prompt fence.
+ *
+ * A document (or a question) containing "</document>" could otherwise close
+ * the fence early and pose as instructions outside it. Swapping the "<" of
+ * any fence tag for a look-alike leaves the text readable to the model but
+ * unable to end or open a fence. Quotes stay verifiable: `normaliseForMatch`
+ * maps the look-alike back.
+ */
+export function fenceUntrusted(text: string): string {
+  return text.replace(FENCE_TAG_RE, `${FENCE_LOOKALIKE}$1`);
+}
+
 /** Normalise for comparison: quotes, dashes, whitespace and case. */
 export function normaliseForMatch(text: string): string {
   return text
+    .replaceAll(FENCE_LOOKALIKE, "<")
     .replace(/[“”«»„]/g, '"')
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[‐‑‒–—―]/g, "-")
@@ -33,12 +63,16 @@ export function isVerbatimQuote(quote: string, clause: Clause): boolean {
   return normaliseForMatch(`${clause.heading ?? ""} ${clause.text}`).includes(q);
 }
 
-/** Render clauses for a prompt: id, heading and text, clearly delimited. */
+/**
+ * Render clauses for a prompt: id, heading and text, clearly delimited.
+ * Ids and risk levels are the engine's own; heading and text are the
+ * document's, so they are fenced.
+ */
 export function formatClauses(clauses: Clause[]): string {
   return clauses
     .map((c) => {
-      const heading = c.heading ? ` — ${c.heading}` : "";
-      return `<clause id="${c.id}"${c.risk ? ` flagged="${c.risk}"` : ""}>\n[${c.id}${heading}]\n${c.text}\n</clause>`;
+      const heading = c.heading ? ` — ${fenceUntrusted(c.heading)}` : "";
+      return `<clause id="${c.id}"${c.risk ? ` flagged="${c.risk}"` : ""}>\n[${c.id}${heading}]\n${fenceUntrusted(c.text)}\n</clause>`;
     })
     .join("\n\n");
 }
