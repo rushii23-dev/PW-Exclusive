@@ -7,7 +7,15 @@
  * in a tab can call the API without threading props through every layer.
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { LANGUAGE_CODES, type LanguageCode } from "@/lib/ai/languages";
 
@@ -64,14 +72,14 @@ function savedLanguage(): LanguageCode {
  */
 export function useLanguagePreference(): [LanguageCode, (code: LanguageCode) => void] {
   const [language, setLanguageState] = useState<LanguageCode>(savedLanguage);
-  function setLanguage(code: LanguageCode) {
+  const setLanguage = useCallback((code: LanguageCode) => {
     setLanguageState(code);
     try {
       window.localStorage.setItem(LANGUAGE_KEY, code);
     } catch {
       // Not remembered, still applied.
     }
-  }
+  }, []);
   return [language, setLanguage];
 }
 
@@ -88,7 +96,13 @@ export function AiProvider({
   documentText: string;
   children: ReactNode;
 }) {
-  const value: AiContextValue = { ...status, language, setLanguage, documentText };
+  // A stable value, so typing in the document box doesn't re-render every
+  // clause card that reads this context.
+  const { configured, model } = status;
+  const value = useMemo<AiContextValue>(
+    () => ({ configured, model, language, setLanguage, documentText }),
+    [configured, model, language, setLanguage, documentText],
+  );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }
 
