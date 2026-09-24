@@ -12,14 +12,11 @@ import { z } from "zod";
 
 import { aiAnswer, engineAnswer } from "@/lib/ai/answer";
 import { isAiConfigured } from "@/lib/ai/gemini";
-import {
-  analyzeDocument,
-  DocumentTooLargeError,
-  DocumentTooSmallError,
-  type Analysis,
-} from "@/lib/engine";
+import { ClauseIndex } from "@/lib/engine";
+import { QUESTION_MAX_CHARS, QUESTION_MIN_CHARS } from "@/lib/limits";
+import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, parseBody, rateLimitOr429 } from "@/lib/server/http";
+import { guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,32 +28,30 @@ const schema = z.object({
   question: z
     .string()
     .trim()
-    .min(3, "Ask a question about the document.")
-    .max(500, "Keep the question under 500 characters."),
+    .min(QUESTION_MIN_CHARS, "Ask a question about the document.")
+    .max(QUESTION_MAX_CHARS, `Keep the question under ${QUESTION_MAX_CHARS} characters.`),
   language: languageField,
 });
 
 export async function POST(request: Request) {
-  const limited = rateLimitOr429(request, "ask", RATE_LIMIT_PER_MINUTE);
-  if (limited) return limited;
+  const blocked = guardRequest(request, "ask", RATE_LIMIT_PER_MINUTE);
+  if (blocked) return blocked;
 
   const body = await parseBody(request, schema);
   if (!body.ok) return body.response;
 
-  let analysis: Analysis;
-  try {
-    analysis = analyzeDocument(body.data.text);
-  } catch (err) {
-    if (err instanceof DocumentTooSmallError || err instanceof DocumentTooLargeError) {
-      return errorResponse(422, "invalid_document", err.message);
-    }
-    return errorResponse(500, "ask_failed", "Could not answer the question.");
-  }
+  const result = analyzeOrError(body.data.text, {
+    code: "ask_failed",
+    message: "Could not answer the question.",
+  });
+  if (!result.ok) return result.response;
 
   const { question, language } = body.data;
+  // One index serves both Gemini's retrieval and the engine's fallback.
+  const index = new ClauseIndex(result.analysis.clauses);
   const answer =
-    (isAiConfigured() ? await aiAnswer(analysis, question, language) : null) ??
-    engineAnswer(analysis, question);
+    (isAiConfigured() ? await aiAnswer(result.analysis, question, language, index, request.signal) : null) ??
+    engineAnswer(result.analysis, question, index);
 
   return NextResponse.json({ answer });
 }

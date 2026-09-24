@@ -13,7 +13,7 @@ import { z } from "zod";
 import { answerQuestion, type Analysis, type Answer, ClauseIndex } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
-import { formatClauses, selectContext, verifyCitations } from "./grounding";
+import { fenceUntrusted, formatClauses, selectContext, verifyCitations } from "./grounding";
 import type { LanguageCode } from "./languages";
 
 const reply = z.object({
@@ -63,8 +63,9 @@ export async function aiAnswer(
   analysis: Analysis,
   question: string,
   language: LanguageCode,
+  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  signal?: AbortSignal,
 ): Promise<Answer | null> {
-  const index = new ClauseIndex(analysis.clauses);
   const { clauses } = selectContext(analysis.clauses, index, question);
 
   const ai = await generateJson({
@@ -72,9 +73,10 @@ export async function aiAnswer(
     system: `${baseRules(language)}
 
 Your task: answer the reader's question about their ${analysis.documentTypeLabel.toLowerCase()} using only the clauses provided. If the clauses do not answer it, set answerable to false — do not guess, and do not fill the gap with general law presented as if it were in the document.`,
-    prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<question>\n${question}\n</question>`,
+    prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<question>\n${fenceUntrusted(question)}\n</question>`,
     schema,
     validate: reply,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;
@@ -104,6 +106,10 @@ Your task: answer the reader's question about their ${analysis.documentTypeLabel
 }
 
 /** Engine answer, marked as such — the fallback when Gemini is unavailable. */
-export function engineAnswer(analysis: Analysis, question: string): Answer {
-  return { ...answerQuestion(new ClauseIndex(analysis.clauses), question), source: "engine" };
+export function engineAnswer(
+  analysis: Analysis,
+  question: string,
+  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+): Answer {
+  return { ...answerQuestion(index, question), source: "engine" };
 }
