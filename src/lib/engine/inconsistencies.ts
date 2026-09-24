@@ -13,11 +13,8 @@
  */
 
 import { extractEntities } from "./entities";
-import { parseNumberWord, splitSentences, truncateAtWord } from "./text";
-import type { Clause, Inconsistency, InconsistencyEvidence } from "./types";
-
-const NUM_WORD =
-  "(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)";
+import { NUM_WORD, parseNumberWord, splitSentences, truncateAtWord } from "./text";
+import type { Clause, ExtractedEntity, Inconsistency, InconsistencyEvidence } from "./types";
 
 /** "sixty (60)", "twenty-one (21)", "thirty (45)" … */
 const WORD_THEN_DIGITS_RE = new RegExp(
@@ -29,11 +26,26 @@ function evidence(clause: Clause, quote: string): InconsistencyEvidence {
   return { clauseId: clause.id, heading: clause.heading, quote: truncateAtWord(quote, 260) };
 }
 
+/**
+ * Sentences and entities are needed by several checks over the same clauses.
+ * Split and extract each once per analysis: a WeakMap keyed by the clause
+ * object lets the cache vanish with the analysis, so no document text
+ * outlives its request.
+ */
+const sentenceCache = new WeakMap<Clause, string[]>();
+
+function sentencesOf(clause: Clause): string[] {
+  let sentences = sentenceCache.get(clause);
+  if (!sentences) {
+    sentences = splitSentences(clause.text);
+    sentenceCache.set(clause, sentences);
+  }
+  return sentences;
+}
+
 function sentenceContaining(clause: Clause, needle: string): string {
   const lower = needle.toLowerCase();
-  return (
-    splitSentences(clause.text).find((s) => s.toLowerCase().includes(lower)) ?? needle
-  );
+  return sentencesOf(clause).find((s) => s.toLowerCase().includes(lower)) ?? needle;
 }
 
 function clauseName(e: InconsistencyEvidence, clauses: Clause[]): string {
@@ -88,7 +100,7 @@ function isNoticePeriod(sentence: string, durationText: string): boolean {
 function conflictingNoticePeriods(clauses: Clause[]): Inconsistency[] {
   const periods: Array<{ days: number; text: string; clause: Clause; sentence: string }> = [];
   for (const clause of clauses) {
-    for (const sentence of splitSentences(clause.text)) {
+    for (const sentence of sentencesOf(clause)) {
       if (!/\bnotice\b/i.test(sentence) || !ENDING_RE.test(sentence)) continue;
       for (const e of extractEntities(sentence)) {
         if (e.kind !== "duration" || !e.value) continue;
@@ -157,12 +169,22 @@ function labelFor(sentence: string, start: number, end: number, re: RegExp): boo
 
 function conflictingAmounts(clauses: Clause[]): Inconsistency[] {
   const out: Inconsistency[] = [];
+  // Every label scans the same sentences; extract their amounts only once.
+  const moneyIn = new Map<string, ExtractedEntity[]>();
+  const moniesOf = (sentence: string) => {
+    let monies = moneyIn.get(sentence);
+    if (!monies) {
+      monies = extractEntities(sentence).filter((e) => e.kind === "money");
+      moneyIn.set(sentence, monies);
+    }
+    return monies;
+  };
   for (const { key, label, re } of AMOUNT_LABELS) {
     const seen: Array<{ value: string; text: string; clause: Clause; sentence: string }> = [];
     for (const clause of clauses) {
-      for (const sentence of splitSentences(clause.text)) {
+      for (const sentence of sentencesOf(clause)) {
         if (!re.test(sentence)) continue;
-        const monies = extractEntities(sentence).filter((e) => e.kind === "money");
+        const monies = moniesOf(sentence);
         // Two amounts in one sentence ("Rs. 32,000 rent and Rs. 3,20,000
         // deposit") are usually a deliberate pairing; attribution is too
         // uncertain to call either one a contradiction.
