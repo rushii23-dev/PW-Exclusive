@@ -160,6 +160,8 @@ export interface Analysis {
   keyFacts: ExtractedEntity[];
   /** Duties the document places on the reader's side. */
   yourObligations: Obligation[];
+  /** Duties it places on the other side — what the reader can hold them to. */
+  theirObligations: Obligation[];
   /** Concrete next steps derived from the findings. */
   checklist: ChecklistItem[];
   /** Questions worth asking a legal professional, derived from the findings. */

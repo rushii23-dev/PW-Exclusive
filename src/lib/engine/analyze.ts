@@ -13,6 +13,7 @@ import { findJargon } from "./glossary";
 import { findInconsistencies } from "./inconsistencies";
 import { extractObligations } from "./obligations";
 import { computeReadability } from "./readability";
+import { byLevelDesc } from "./risk";
 import { segment } from "./segment";
 import { composeSummary, detectDocumentType } from "./summarize";
 import { formatCount } from "./text";
@@ -27,6 +28,9 @@ import type {
 /** Bounds enforced by the API too; duplicated here so the engine is safe alone. */
 export const MAX_DOCUMENT_CHARS = 200_000;
 export const MIN_DOCUMENT_CHARS = 80;
+
+/** Enough duties per side to be useful without burying the list. */
+const MAX_OBLIGATIONS = 12;
 
 export class DocumentTooLargeError extends Error {
   constructor() {
@@ -45,14 +49,13 @@ export class DocumentTooSmallError extends Error {
 }
 
 function dedupeFindings(clauses: Clause[]): RiskFinding[] {
-  const order: Record<string, number> = { high: 3, medium: 2, low: 1 };
   const byRule = new Map<string, RiskFinding>();
   for (const clause of clauses) {
     for (const f of clause.findings) {
       if (!byRule.has(f.ruleId)) byRule.set(f.ruleId, f);
     }
   }
-  return [...byRule.values()].sort((a, b) => order[b.level] - order[a.level]);
+  return [...byRule.values()].sort(byLevelDesc);
 }
 
 function dedupeEntities(clauses: Clause[]): ExtractedEntity[] {
@@ -75,6 +78,9 @@ export function analyzeDocument(text: string): Analysis {
   if (trimmed.length < MIN_DOCUMENT_CHARS) throw new DocumentTooSmallError();
 
   const rawClauses = segment(trimmed);
+  // The kind of document decides whose duties are whose (a "client" is the
+  // reader of a subscription but the other side of a freelance contract).
+  const { type, label } = detectDocumentType(trimmed);
 
   const clauses: Clause[] = rawClauses.map((raw, index) => {
     const scope = `${raw.heading ?? ""}\n${raw.text}`;
@@ -89,7 +95,7 @@ export function analyzeDocument(text: string): Analysis {
       findings,
       entities: extractEntities(raw.text),
       jargon: findJargon(scope),
-      obligations: extractObligations(raw.text),
+      obligations: extractObligations(raw.text, type),
     };
   });
 
@@ -103,14 +109,16 @@ export function analyzeDocument(text: string): Analysis {
     riskProfile.high > 0 ? "high" : riskProfile.medium > 0 ? "medium" : riskProfile.low > 0 ? "low" : null;
 
   const readability = computeReadability(trimmed);
-  const { type, label } = detectDocumentType(trimmed);
   const findings = dedupeFindings(clauses);
   const keyFacts = dedupeEntities(clauses);
 
-  const yourObligations = clauses
-    .flatMap((c) => c.obligations)
+  const obligations = clauses.flatMap((c) => c.obligations);
+  const yourObligations = obligations
     .filter((o) => o.party === "you" || o.party === "both")
-    .slice(0, 12);
+    .slice(0, MAX_OBLIGATIONS);
+  const theirObligations = obligations
+    .filter((o) => o.party === "counterparty")
+    .slice(0, MAX_OBLIGATIONS);
 
   const glossarySeen = new Set<string>();
   const glossary = clauses
@@ -131,6 +139,7 @@ export function analyzeDocument(text: string): Analysis {
     findings,
     keyFacts,
     yourObligations,
+    theirObligations,
     checklist: buildChecklist(findings),
     lawyerQuestions: buildLawyerQuestions(findings),
     glossary,
