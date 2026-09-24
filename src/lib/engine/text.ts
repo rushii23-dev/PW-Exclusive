@@ -92,6 +92,12 @@ const TENS: Record<string, number> = {
 };
 
 /**
+ * Regex source matching one spelled-out number word ("sixty", "twenty"),
+ * built from the same tables `parseNumberWord` reads, so the two can't drift.
+ */
+export const NUM_WORD = `(?:${[...Object.keys(UNITS).filter((w) => w !== "zero"), ...Object.keys(TENS), "hundred"].join("|")})`;
+
+/**
  * Parse "thirty", "twenty-one", "ninety nine", or a plain numeral.
  * Legal drafting loves "thirty (30) days"; the caller handles the numeral in
  * parentheses, this handles the words.

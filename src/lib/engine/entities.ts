@@ -5,7 +5,7 @@
  * amount shown in the UI comes from here, exactly as written in the document.
  */
 
-import { parseNumberWord } from "./text";
+import { NUM_WORD, parseNumberWord } from "./text";
 import type { ExtractedEntity } from "./types";
 
 const MONEY_RE =
@@ -16,10 +16,6 @@ const DATE_RES = [
   /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:day\s+of\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December),?\s+\d{4}\b/gi,
   /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
 ];
-
-/** Spelled-out numbers as they appear in drafting ("sixty", "twenty-one"). */
-const NUM_WORD =
-  "(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)";
 
 /** "thirty (30) days", "30 days", "twelve months", "two (2) weeks" … */
 const DURATION_RE = new RegExp(
