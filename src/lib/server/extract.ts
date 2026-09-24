@@ -8,11 +8,12 @@
  * text that goes through the same analysis as anything pasted in.
  */
 
+import "server-only";
+
 import { transcribeDocument, isAiConfigured } from "@/lib/ai/gemini";
 import { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "@/lib/engine";
 
-/** Fits comfortably under common serverless request limits. */
-export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+export { MAX_UPLOAD_BYTES } from "@/lib/limits";
 
 export type ExtractionMethod = "text" | "pdf-text" | "docx" | "gemini-vision";
 
@@ -48,13 +49,45 @@ export function detectKind(name: string, type: string): "pdf" | "docx" | "image"
   return null;
 }
 
-function imageMime(name: string, type: string): string {
-  if (IMAGE_TYPES.has(type)) return type;
-  const ext = name.toLowerCase().split(".").pop();
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "heic" || ext === "heif") return `image/${ext}`;
-  return "image/jpeg";
+const startsWith = (bytes: Uint8Array, signature: number[], at = 0) =>
+  signature.every((b, i) => bytes[at + i] === b);
+const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
+
+/** HEIF-family brands a phone camera writes after the `ftyp` box marker. */
+const HEIF_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs", "mif1", "msf1"]);
+
+/**
+ * The real image format, read from the file's first bytes — never from its
+ * name or the browser's claim — or null if the bytes are not an image we read.
+ */
+export function sniffImage(bytes: Uint8Array): string | null {
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (startsWith(bytes, ascii("RIFF")) && startsWith(bytes, ascii("WEBP"), 8)) return "image/webp";
+  if (startsWith(bytes, ascii("ftyp"), 4)) {
+    const brand = String.fromCharCode(...bytes.subarray(8, 12));
+    if (HEIF_BRANDS.has(brand)) return brand.startsWith("hei") ? "image/heic" : "image/heif";
+  }
+  return null;
+}
+
+/** PDFs may carry a little junk before the header; readers allow 1 KB of it. */
+function looksLikePdf(bytes: Uint8Array): boolean {
+  const head = String.fromCharCode(...bytes.subarray(0, 1024));
+  return head.includes("%PDF-");
+}
+
+/** A .docx is a ZIP container. */
+function looksLikeZip(bytes: Uint8Array): boolean {
+  return startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]);
+}
+
+function mismatch(): ExtractError {
+  return new ExtractError(
+    415,
+    "file_type_mismatch",
+    "That file's contents don't match its type. Upload a real PDF, Word (.docx), image or text file.",
+  );
 }
 
 /** Tidy extracted text: normalise line endings, collapse runs of blank lines. */
@@ -86,7 +119,12 @@ async function readDocxText(bytes: Uint8Array): Promise<string> {
   return value;
 }
 
-async function viaGemini(bytes: Uint8Array, mimeType: string, what: string): Promise<string> {
+async function viaGemini(
+  bytes: Uint8Array,
+  mimeType: string,
+  what: string,
+  signal?: AbortSignal,
+): Promise<string> {
   if (!isAiConfigured()) {
     throw new ExtractError(
       503,
@@ -94,7 +132,7 @@ async function viaGemini(bytes: Uint8Array, mimeType: string, what: string): Pro
       `Reading ${what} needs Gemini, which isn't configured here. Paste the text instead, or upload a PDF with selectable text.`,
     );
   }
-  const text = await transcribeDocument({ mimeType, data: bytes });
+  const text = await transcribeDocument({ mimeType, data: bytes, signal });
   if (!text) {
     throw new ExtractError(
       422,
@@ -109,6 +147,8 @@ export async function extractDocumentText(file: {
   name: string;
   type: string;
   bytes: Uint8Array;
+  /** The upload request; reading stops if the uploader goes away. */
+  signal?: AbortSignal;
 }): Promise<Extraction> {
   const kind = detectKind(file.name, file.type);
   if (!kind) {
@@ -119,11 +159,22 @@ export async function extractDocumentText(file: {
     );
   }
 
+  // The name and MIME type are the uploader's claims; the bytes are the
+  // truth. Check them before any parser or model sees the file.
   if (kind === "text") {
-    return finish(new TextDecoder().decode(file.bytes), "text");
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(file.bytes);
+    } catch {
+      throw new ExtractError(422, "unreadable_file", "That text file isn't valid UTF-8 text. Save it as UTF-8, or paste the text instead.");
+    }
+    // A NUL byte never appears in real text; it marks a binary file renamed .txt.
+    if (text.includes("\u0000")) throw mismatch();
+    return finish(text, "text");
   }
 
   if (kind === "docx") {
+    if (!looksLikeZip(file.bytes)) throw mismatch();
     let text: string;
     try {
       text = await readDocxText(file.bytes);
@@ -137,9 +188,12 @@ export async function extractDocumentText(file: {
   }
 
   if (kind === "image") {
-    return finish(await viaGemini(file.bytes, imageMime(file.name, file.type), "a photo"), "gemini-vision");
+    const mimeType = sniffImage(file.bytes);
+    if (!mimeType) throw mismatch();
+    return finish(await viaGemini(file.bytes, mimeType, "a photo", file.signal), "gemini-vision");
   }
 
+  if (!looksLikePdf(file.bytes)) throw mismatch();
   // PDF: use the text layer when there is one; a scan has none.
   let pdf: { text: string; pages: number } | null = null;
   try {
@@ -150,5 +204,9 @@ export async function extractDocumentText(file: {
   if (pdf && tidy(pdf.text).length >= MIN_DOCUMENT_CHARS) {
     return finish(pdf.text, "pdf-text", pdf.pages);
   }
-  return finish(await viaGemini(file.bytes, "application/pdf", "a scanned PDF"), "gemini-vision", pdf?.pages);
+  return finish(
+    await viaGemini(file.bytes, "application/pdf", "a scanned PDF", file.signal),
+    "gemini-vision",
+    pdf?.pages,
+  );
 }
