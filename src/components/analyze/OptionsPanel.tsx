@@ -11,9 +11,12 @@ import { useState } from "react";
 
 import { useAi } from "@/components/ai/AiContext";
 import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
+import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 import type { SituationGuide } from "@/lib/ai/options";
 import { postJson } from "@/lib/client/api";
+import { useLatestRequest } from "@/lib/client/hooks";
 import type { DocumentType } from "@/lib/engine";
+import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS: Record<DocumentType | "default", string[]> = {
@@ -61,28 +64,32 @@ export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
   const [situation, setSituation] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [guide, setGuide] = useState<SituationGuide | null>(null);
+  const [result, setResult] = useState<{ guide: SituationGuide; language: LanguageCode } | null>(null);
+  const nextSignal = useLatestRequest();
 
   async function run(text: string) {
     const trimmed = text.trim();
-    if (trimmed.length < 8 || pending) return;
+    if (trimmed.length < SITUATION_MIN_CHARS || pending) return;
     setSituation(trimmed);
     setPending(true);
     setError(null);
-    const result = await postJson<{ guide: SituationGuide }>("/api/options", {
-      text: documentText,
-      situation: trimmed,
-      language,
-    });
+    const asked = language;
+    const response = await postJson<{ guide: SituationGuide }>(
+      "/api/options",
+      { text: documentText, situation: trimmed, language: asked },
+      { signal: nextSignal() },
+    );
+    if (!response.ok && response.aborted) return;
     setPending(false);
-    if (result.ok) setGuide(result.data.guide);
+    if (response.ok) setResult({ guide: response.data.guide, language: asked });
     else {
-      setGuide(null);
-      setError(result.error);
+      setResult(null);
+      setError(response.error);
     }
   }
 
   const suggestions = SUGGESTIONS[documentType] ?? SUGGESTIONS.default;
+  const count = result?.guide.options.length ?? 0;
 
   return (
     <div className="space-y-5">
@@ -97,24 +104,26 @@ export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
           <Compass className="size-5 text-primary-strong" aria-hidden />
           Describe your situation
         </label>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p id="situation-hint" className="mt-1 text-sm text-muted-foreground">
           In your own words. You&rsquo;ll get the routes this document gives you, what each one
           costs, and what to do next.
         </p>
         <textarea
           id="situation-input"
+          aria-describedby={error ? "situation-hint options-error" : "situation-hint"}
           value={situation}
           onChange={(e) => setSituation(e.target.value)}
           rows={3}
-          maxLength={1000}
+          maxLength={SITUATION_MAX_CHARS}
           placeholder="e.g. I need to move out three months early because of a job transfer."
-          className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-3.5 text-sm leading-relaxed shadow-inner placeholder:text-muted-foreground/70 focus:border-border-strong"
+          className="mt-3 w-full resize-y rounded-xl border border-border bg-background p-3.5 text-sm leading-relaxed shadow-inner placeholder:text-muted-foreground focus:border-border-strong"
         />
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            disabled={pending || situation.trim().length < 8}
-            className="glow-primary inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none disabled:hover:scale-100"
+            disabled={situation.trim().length < SITUATION_MIN_CHARS}
+            aria-disabled={pending || undefined}
+            className="glow-primary inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary-strong to-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:shadow-none disabled:hover:scale-100 aria-disabled:cursor-progress aria-disabled:opacity-70"
           >
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Scale className="size-4" aria-hidden />}
             {pending ? "Working it out…" : "Show my options"}
@@ -126,8 +135,8 @@ export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
               <button
                 type="button"
                 onClick={() => void run(s)}
-                disabled={pending}
-                className="rounded-full border border-border bg-background px-3 py-1.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground disabled:opacity-50"
+                aria-disabled={pending || undefined}
+                className="min-h-8 rounded-full border border-border bg-background px-3 py-1.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground aria-disabled:opacity-50"
               >
                 {s}
               </button>
@@ -136,27 +145,37 @@ export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
         </ul>
       </form>
 
-      <div aria-live="polite">
+      <p role="status" className="sr-only">
+        {pending
+          ? "Working out your options…"
+          : result
+            ? `${count} option${count === 1 ? "" : "s"} found for your situation.`
+            : ""}
+      </p>
+
+      <div aria-busy={pending}>
         {pending && (
-          <div className="space-y-3" aria-label="Working out your options">
-            <div className="skeleton h-20 w-full" />
-            <div className="skeleton h-32 w-full" />
+          <div className="space-y-3">
+            <div aria-hidden className="skeleton h-20 w-full" />
+            <div aria-hidden className="skeleton h-32 w-full" />
           </div>
         )}
 
         {error && !pending && (
-          <p role="alert" className="rounded-xl bg-risk-high-soft p-4 text-sm text-risk-high">
+          <p id="options-error" role="alert" className="rounded-xl bg-risk-high-soft p-4 text-sm text-risk-high">
             {error}
           </p>
         )}
 
-        {guide && !pending && <GuideView guide={guide} />}
+        {result && !pending && <GuideView guide={result.guide} language={result.language} />}
       </div>
     </div>
   );
 }
 
-function GuideView({ guide }: { guide: SituationGuide }) {
+function GuideView({ guide, language }: { guide: SituationGuide; language: LanguageCode }) {
+  // Only Gemini writes in the reader's language; the engine writes English.
+  const written = guide.source === "ai" ? languageAttributes(language) : {};
   return (
     <div className="animate-fade-in-up space-y-4">
       <div className="sheet rounded-2xl border border-border p-5">
@@ -174,7 +193,9 @@ function GuideView({ guide }: { guide: SituationGuide }) {
             </span>
           )}
         </div>
-        <p className="mt-3 text-[15px] leading-relaxed">{guide.summary}</p>
+        <p {...written} className="mt-3 text-[15px] leading-relaxed">
+          {guide.summary}
+        </p>
       </div>
 
       {guide.options.length > 0 && (
@@ -186,16 +207,21 @@ function GuideView({ guide }: { guide: SituationGuide }) {
             {guide.options.map((o, i) => (
               <li key={o.title} className="lift sheet flex flex-col rounded-2xl border border-border p-5">
                 <p className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-soft text-xs text-primary-strong tabular">
+                  <span
+                    aria-hidden
+                    className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-soft text-xs text-primary-strong tabular"
+                  >
                     {i + 1}
                   </span>
-                  {o.title}
+                  <span {...written}>{o.title}</span>
                 </p>
-                <p className="mt-2 text-sm leading-relaxed">{o.whatHappens}</p>
+                <p {...written} className="mt-2 text-sm leading-relaxed">
+                  {o.whatHappens}
+                </p>
                 {o.costsAndRisks && (
                   <p className="mt-2 rounded-lg bg-risk-medium-soft/70 p-2.5 text-xs leading-relaxed">
                     <span className="font-semibold">Cost or risk: </span>
-                    {o.costsAndRisks}
+                    <span {...written}>{o.costsAndRisks}</span>
                   </p>
                 )}
                 <ul className="mt-4 space-y-1.5 border-t border-dashed border-border pt-3">
@@ -206,7 +232,7 @@ function GuideView({ guide }: { guide: SituationGuide }) {
                         <span className="font-semibold text-foreground">
                           {s.heading ?? s.clauseId.replace("clause-", "Clause ")}:
                         </span>{" "}
-                        <span className="italic">“{s.quote}”</span>
+                        <q className="italic">{s.quote}</q>
                       </span>
                     </li>
                   ))}
@@ -223,7 +249,7 @@ function GuideView({ guide }: { guide: SituationGuide }) {
             <h3 id="next-steps-heading" className="font-sans text-sm font-semibold">
               Next steps
             </h3>
-            <ol className="mt-2.5 space-y-2">
+            <ol {...written} className="mt-2.5 space-y-2">
               {guide.nextSteps.map((s) => (
                 <li key={s} className="flex gap-2 text-sm leading-relaxed">
                   <ArrowRight className="mt-1 size-3.5 shrink-0 text-primary" aria-hidden />
@@ -238,7 +264,7 @@ function GuideView({ guide }: { guide: SituationGuide }) {
             <h3 id="pro-questions-heading" className="font-sans text-sm font-semibold">
               Ask a legal professional
             </h3>
-            <ul className="mt-2.5 list-disc space-y-1.5 pl-5 text-sm leading-relaxed">
+            <ul {...written} className="mt-2.5 list-disc space-y-1.5 ps-5 text-sm leading-relaxed">
               {guide.questionsForProfessional.map((q) => (
                 <li key={q}>{q}</li>
               ))}
