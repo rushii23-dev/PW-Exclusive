@@ -28,7 +28,7 @@
 
   --risk-high: oklch(0.49 0.19 22);
   --risk-high-soft: oklch(0.955 0.03 24);
-  --risk-medium: oklch(0.55 0.14 66);
+  --risk-medium: oklch(0.52 0.135 64);
   --risk-medium-soft: oklch(0.96 0.042 84);
   --risk-low: oklch(0.47 0.07 248);
   --risk-low-soft: oklch(0.95 0.018 248);
@@ -389,7 +389,9 @@
     margin: 20mm 16mm 18mm 20mm;
   }
 
-  nav, header, footer, button, textarea, input, select,
+  /* Site chrome and controls go; a clause card's own <header> — its title
+     and risk badge — must stay, so elements are hidden by role, not tag. */
+  nav, button, textarea, input, select, [role="tablist"],
   .print-hidden {
     display: none !important;
   }

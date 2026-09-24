@@ -173,7 +173,7 @@ export default function HomePage() {
             style={{ animationDelay: "0.32s" }}
           >
             {STATS.map((stat) => (
-              <div key={stat.label} className="bg-surface-raised px-5 py-5">
+              <div key={stat.label} className="flex flex-col bg-surface-raised px-5 py-5">
                 <dt className="order-last mt-1 text-xs text-muted-foreground">
                   {stat.label}
                 </dt>
