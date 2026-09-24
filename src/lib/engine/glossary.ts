@@ -77,24 +77,30 @@ export const GLOSSARY: GlossaryEntry[] = [
   { term: "successors and assigns", definition: "Whoever legally steps into a party's place later — heirs, buyers of the business — is bound by (and benefits from) the contract." },
 ];
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
- * Find glossary terms present in a text. Longest match wins per position and
- * each entry is reported once, so the same clause never lists a term twice.
+ * One whole-word matcher per entry, covering the term and its aliases,
+ * compiled once at load. Word boundaries matter: "lien" must not match
+ * inside "client", nor "term" inside "determine".
+ */
+const MATCHERS: ReadonlyArray<{ entry: GlossaryEntry; re: RegExp }> = GLOSSARY.map((entry) => ({
+  entry,
+  re: new RegExp(
+    `\\b(?:${[entry.term, ...(entry.aliases ?? [])].map(escapeRegExp).join("|")})\\b`,
+    "i",
+  ),
+}));
+
+/** Glossary entries whose term or an alias appears in the text as a whole word. */
+export function matchGlossary(text: string): GlossaryEntry[] {
+  return MATCHERS.filter(({ re }) => re.test(text)).map(({ entry }) => entry);
+}
+
+/**
+ * Find glossary terms present in a text, each reported once, in glossary
+ * order — so the same clause never lists a term twice.
  */
 export function findJargon(text: string): Array<{ term: string; definition: string }> {
-  const lower = text.toLowerCase();
-  const found: Array<{ term: string; definition: string }> = [];
-  const seen = new Set<string>();
-  for (const entry of GLOSSARY) {
-    if (seen.has(entry.term)) continue;
-    const forms = [entry.term, ...(entry.aliases ?? [])];
-    const hit = forms.some((form) =>
-      new RegExp(`\\b${form.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(lower),
-    );
-    if (hit) {
-      seen.add(entry.term);
-      found.push({ term: entry.term, definition: entry.definition });
-    }
-  }
-  return found;
+  return matchGlossary(text).map(({ term, definition }) => ({ term, definition }));
 }
