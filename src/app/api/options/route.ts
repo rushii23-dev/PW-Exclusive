@@ -12,14 +12,11 @@ import { z } from "zod";
 
 import { isAiConfigured } from "@/lib/ai/gemini";
 import { aiSituationGuide, engineSituationGuide } from "@/lib/ai/options";
-import {
-  analyzeDocument,
-  DocumentTooLargeError,
-  DocumentTooSmallError,
-  type Analysis,
-} from "@/lib/engine";
+import { ClauseIndex } from "@/lib/engine";
+import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
+import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, parseBody, rateLimitOr429 } from "@/lib/server/http";
+import { guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,32 +28,29 @@ const schema = z.object({
   situation: z
     .string()
     .trim()
-    .min(8, "Describe your situation in a sentence or two.")
-    .max(1000, "Keep the description under 1,000 characters."),
+    .min(SITUATION_MIN_CHARS, "Describe your situation in a sentence or two.")
+    .max(SITUATION_MAX_CHARS, "Keep the description under 1,000 characters."),
   language: languageField,
 });
 
 export async function POST(request: Request) {
-  const limited = rateLimitOr429(request, "options", RATE_LIMIT_PER_MINUTE);
-  if (limited) return limited;
+  const blocked = guardRequest(request, "options", RATE_LIMIT_PER_MINUTE);
+  if (blocked) return blocked;
 
   const body = await parseBody(request, schema);
   if (!body.ok) return body.response;
 
-  let analysis: Analysis;
-  try {
-    analysis = analyzeDocument(body.data.text);
-  } catch (err) {
-    if (err instanceof DocumentTooSmallError || err instanceof DocumentTooLargeError) {
-      return errorResponse(422, "invalid_document", err.message);
-    }
-    return errorResponse(500, "options_failed", "Could not work through that situation.");
-  }
+  const result = analyzeOrError(body.data.text, {
+    code: "options_failed",
+    message: "Could not work through that situation.",
+  });
+  if (!result.ok) return result.response;
 
   const { situation, language } = body.data;
+  const index = new ClauseIndex(result.analysis.clauses);
   const guide =
-    (isAiConfigured() ? await aiSituationGuide(analysis, situation, language) : null) ??
-    engineSituationGuide(analysis, situation);
+    (isAiConfigured() ? await aiSituationGuide(result.analysis, situation, language, index, request.signal) : null) ??
+    engineSituationGuide(result.analysis, situation, index);
 
   return NextResponse.json({ guide });
 }

@@ -13,7 +13,13 @@ import { z } from "zod";
 import { bestQuote, ClauseIndex, type Analysis } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
-import { formatClauses, selectContext, verifyCitations, type VerifiedCitation } from "./grounding";
+import {
+  fenceUntrusted,
+  formatClauses,
+  selectContext,
+  verifyCitations,
+  type VerifiedCitation,
+} from "./grounding";
 import type { LanguageCode } from "./languages";
 
 export interface SituationOption {
@@ -115,8 +121,9 @@ export async function aiSituationGuide(
   analysis: Analysis,
   situation: string,
   language: LanguageCode,
+  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  signal?: AbortSignal,
 ): Promise<SituationGuide | null> {
-  const index = new ClauseIndex(analysis.clauses);
   const { clauses } = selectContext(analysis.clauses, index, situation);
 
   const ai = await generateJson({
@@ -124,10 +131,11 @@ export async function aiSituationGuide(
     system: `${baseRules(language)}
 
 Your task: the reader has described their situation. Using only the clauses provided from their ${analysis.documentTypeLabel.toLowerCase()}, lay out the options the document gives them, what each costs, and sensible next steps. Be practical and even-handed; include the option of negotiating with the other party where it is realistic. If the document does not address the situation, say so and set covered to false.`,
-    prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<situation>\n${situation}\n</situation>`,
+    prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<situation>\n${fenceUntrusted(situation)}\n</situation>`,
     schema,
     validate: reply,
     temperature: 0.3,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;
@@ -160,8 +168,12 @@ Your task: the reader has described their situation. Using only the clauses prov
  * Without the model: the clauses that best match the situation, and the
  * checklist steps and lawyer questions the engine derived from their flags.
  */
-export function engineSituationGuide(analysis: Analysis, situation: string): SituationGuide {
-  const hits = new ClauseIndex(analysis.clauses).search(situation, 3).filter((h) => h.score >= 1);
+export function engineSituationGuide(
+  analysis: Analysis,
+  situation: string,
+  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+): SituationGuide {
+  const hits = index.search(situation, 3).filter((h) => h.score >= 1);
   if (hits.length === 0) {
     return {
       source: "engine",
