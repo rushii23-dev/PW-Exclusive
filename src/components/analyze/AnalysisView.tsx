@@ -6,13 +6,14 @@ import {
   Check,
   ClipboardCopy,
   Coins,
+  Download,
   FileText,
   Percent,
   Printer,
   ShieldCheck,
   Timer,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState, type Ref } from "react";
 
 import { AiBriefCard } from "@/components/analyze/AiBriefCard";
 import { AskPanel } from "@/components/analyze/AskPanel";
@@ -22,7 +23,9 @@ import { OptionsPanel } from "@/components/analyze/OptionsPanel";
 import { RiskMeter } from "@/components/RiskMeter";
 import { Tabs } from "@/components/Tabs";
 import type { AiBrief } from "@/lib/ai/brief";
-import { formatCount, toPlainText, type Analysis, type RiskLevel } from "@/lib/engine";
+import type { LanguageCode } from "@/lib/ai/languages";
+import { downloadText, useCopy } from "@/lib/client/hooks";
+import { formatCount, toPlainText, type Analysis, type Obligation, type RiskLevel } from "@/lib/engine";
 import { cn } from "@/lib/utils";
 
 const ENTITY_ICON = {
@@ -34,12 +37,18 @@ const ENTITY_ICON = {
 
 type RiskFilter = "all" | RiskLevel;
 
+const SECONDARY_BUTTON =
+  "elev-xs inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold transition-colors hover:border-border-strong hover:bg-muted";
+
 function ClausesTab({ analysis }: { analysis: Analysis }) {
-  const [filter, setFilter] = useState<RiskFilter>("all");
+  // Null until the reader picks a filter: the count is announced only as
+  // an answer to their choice, never when the tab first appears.
+  const [filter, setFilter] = useState<RiskFilter | null>(null);
+  const active = filter ?? "all";
   const clauses =
-    filter === "all"
+    active === "all"
       ? analysis.clauses
-      : analysis.clauses.filter((c) => c.risk === filter);
+      : analysis.clauses.filter((c) => c.risk === active);
 
   const options: Array<{ id: RiskFilter; label: string; count: number }> = [
     { id: "all", label: "All clauses", count: analysis.clauses.length },
@@ -56,11 +65,11 @@ function ClausesTab({ analysis }: { analysis: Analysis }) {
             <button
               key={o.id}
               type="button"
-              aria-pressed={filter === o.id}
+              aria-pressed={active === o.id}
               onClick={() => setFilter(o.id)}
               className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                filter === o.id
+                "min-h-8 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                active === o.id
                   ? "border-primary bg-primary-soft text-primary-strong"
                   : "border-border bg-surface text-muted-foreground hover:text-foreground",
               )}
@@ -69,6 +78,9 @@ function ClausesTab({ analysis }: { analysis: Analysis }) {
             </button>
           ))}
       </div>
+      <p role="status" className="sr-only">
+        {filter ? `Showing ${clauses.length} of ${analysis.clauses.length} clauses.` : ""}
+      </p>
       <div className="mt-4 space-y-4">
         {clauses.map((clause) => (
           <ClauseCard key={clause.id} clause={clause} />
@@ -95,21 +107,15 @@ function briefAsText(brief: AiBrief): string {
   return lines.join("\n");
 }
 
+/** The whole analysis as text: the Gemini brief first, when there is one. */
+export function exportText(analysis: Analysis, brief: AiBrief | null): string {
+  const body = toPlainText(analysis);
+  return brief ? `${briefAsText(brief)}\n${body}` : body;
+}
+
 function ActionPlanTab({ analysis, brief }: { analysis: Analysis; brief: AiBrief | null }) {
   const [done, setDone] = useState<Set<number>>(new Set());
-  const [copied, setCopied] = useState(false);
-
-  async function copyAll() {
-    try {
-      const body = toPlainText(analysis);
-      await navigator.clipboard.writeText(brief ? `${briefAsText(brief)}\n${body}` : body);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard can be unavailable (permissions, insecure context); the
-      // print path still works.
-    }
-  }
+  const { copied, copy } = useCopy();
 
   return (
     <div className="space-y-8">
@@ -118,12 +124,8 @@ function ActionPlanTab({ analysis, brief }: { analysis: Analysis; brief: AiBrief
           <h3 id="checklist-heading" className="font-sans text-base font-semibold">
             Before you sign
           </h3>
-          <div className="print-hidden flex gap-2">
-            <button
-              type="button"
-              onClick={copyAll}
-              className="elev-xs inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold transition-colors hover:border-border-strong hover:bg-muted"
-            >
+          <div className="print-hidden flex flex-wrap gap-2">
+            <button type="button" onClick={() => copy(exportText(analysis, brief))} className={SECONDARY_BUTTON}>
               {copied ? (
                 <Check className="size-3.5 text-ok" aria-hidden />
               ) : (
@@ -133,13 +135,25 @@ function ActionPlanTab({ analysis, brief }: { analysis: Analysis; brief: AiBrief
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
-              className="elev-xs inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold transition-colors hover:border-border-strong hover:bg-muted"
+              onClick={() =>
+                downloadText(
+                  `clearclause-${analysis.documentType}.txt`,
+                  exportText(analysis, brief),
+                )
+              }
+              className={SECONDARY_BUTTON}
             >
+              <Download className="size-3.5" aria-hidden />
+              Download .txt
+            </button>
+            <button type="button" onClick={() => window.print()} className={SECONDARY_BUTTON}>
               <Printer className="size-3.5" aria-hidden />
               Print / save PDF
             </button>
           </div>
+          <span role="status" className="sr-only">
+            {copied ? "Analysis copied to the clipboard." : ""}
+          </span>
         </div>
         {analysis.checklist.length === 0 ? (
           <p className="mt-3 rounded-xl border border-border bg-surface p-5 text-sm text-muted-foreground">
@@ -201,6 +215,25 @@ function ActionPlanTab({ analysis, brief }: { analysis: Analysis; brief: AiBrief
   );
 }
 
+function DutyList({ id, title, hint, duties }: { id: string; title: string; hint: string; duties: Obligation[] }) {
+  if (duties.length === 0) return null;
+  return (
+    <section aria-labelledby={id}>
+      <h3 id={id} className="font-sans text-base font-semibold">
+        {title}
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+      <ul className="mt-3 space-y-2">
+        {duties.map((o) => (
+          <li key={o.text} className="rounded-xl border border-border bg-surface p-4 text-sm leading-relaxed">
+            {o.text}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function FactsTab({ analysis }: { analysis: Analysis }) {
   return (
     <div className="space-y-8">
@@ -230,23 +263,18 @@ function FactsTab({ analysis }: { analysis: Analysis }) {
         </section>
       )}
 
-      {analysis.yourObligations.length > 0 && (
-        <section aria-labelledby="obligations-heading">
-          <h3 id="obligations-heading" className="font-sans text-base font-semibold">
-            What this document requires of you
-          </h3>
-          <ul className="mt-3 space-y-2">
-            {analysis.yourObligations.map((o) => (
-              <li
-                key={o.text}
-                className="rounded-xl border border-border bg-surface p-4 text-sm leading-relaxed"
-              >
-                {o.text}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <DutyList
+        id="obligations-heading"
+        title="What this document requires of you"
+        hint="Your duties under it — missing one is how deposits and fees get lost."
+        duties={analysis.yourObligations}
+      />
+      <DutyList
+        id="their-obligations-heading"
+        title="What the other side must do"
+        hint="Their duties — the promises you can hold them to."
+        duties={analysis.theirObligations}
+      />
 
       {analysis.glossary.length > 0 && (
         <section aria-labelledby="glossary-heading">
@@ -269,15 +297,25 @@ function FactsTab({ analysis }: { analysis: Analysis }) {
   );
 }
 
-export function AnalysisView({
+/**
+ * Memoised: the document box above re-renders on every keystroke, and a long
+ * contract puts hundreds of clause cards in here that have not changed.
+ */
+export const AnalysisView = memo(function AnalysisView({
   analysis,
   aiBrief,
+  aiLanguage = "en",
   aiCheckedContradictions,
+  headingRef,
 }: {
   analysis: Analysis;
   aiBrief: AiBrief | null;
+  /** Language Gemini wrote this analysis's text in. */
+  aiLanguage?: LanguageCode;
   /** Whether Gemini completed its contradiction read, so the "none found" note is truthful. */
   aiCheckedContradictions: boolean;
+  /** Receives focus when a new analysis arrives. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   const stats = useMemo(
     () => [
@@ -294,7 +332,7 @@ export function AnalysisView({
       {/* ── Header ──────────────────────────────────────────────────── */}
       <section
         aria-labelledby="result-heading"
-        className="sheet rounded-2xl border border-border p-6"
+        className="sheet scroll-mt-24 rounded-2xl border border-border p-6"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -302,17 +340,23 @@ export function AnalysisView({
               <FileText className="size-3.5" aria-hidden />
               Detected document type
             </p>
-            <h2 id="result-heading" className="mt-1 text-2xl font-semibold sm:text-3xl">
+            <h2
+              id="result-heading"
+              ref={headingRef}
+              tabIndex={-1}
+              className="mt-1 scroll-mt-24 text-2xl font-semibold focus:outline-none sm:text-3xl"
+            >
               {analysis.documentTypeLabel}
             </h2>
           </div>
           <dl className="flex gap-5">
             {stats.map((s) => (
-              <div key={s.label} className="text-right">
+              // Term before value in the markup; the value is shown first.
+              <div key={s.label} className="flex flex-col-reverse text-right">
+                <dt className="text-[11px] text-muted-foreground">{s.label}</dt>
                 <dd className="font-display text-xl font-semibold capitalize tabular">
                   {s.value}
                 </dd>
-                <dt className="text-[11px] text-muted-foreground">{s.label}</dt>
               </div>
             ))}
           </dl>
@@ -323,7 +367,7 @@ export function AnalysisView({
       </section>
 
       {/* ── Gemini brief ────────────────────────────────────────────── */}
-      {aiBrief && <AiBriefCard brief={aiBrief} />}
+      {aiBrief && <AiBriefCard brief={aiBrief} language={aiLanguage} />}
 
       {/* ── Summary ─────────────────────────────────────────────────── */}
       <section
@@ -353,10 +397,11 @@ export function AnalysisView({
       </section>
 
       {/* ── Contradictions ──────────────────────────────────────────── */}
-      <InconsistencyList items={analysis.inconsistencies} />
+      <InconsistencyList items={analysis.inconsistencies} aiLanguage={aiLanguage} />
 
       {/* ── Detail tabs ─────────────────────────────────────────────── */}
       <Tabs
+        label="Analysis details"
         tabs={[
           {
             id: "clauses",
@@ -398,4 +443,4 @@ export function AnalysisView({
       </p>
     </div>
   );
-}
+});
