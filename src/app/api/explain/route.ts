@@ -12,14 +12,9 @@ import { z } from "zod";
 
 import { explainClause } from "@/lib/ai/explain";
 import { isAiConfigured } from "@/lib/ai/gemini";
-import {
-  analyzeDocument,
-  DocumentTooLargeError,
-  DocumentTooSmallError,
-  type Analysis,
-} from "@/lib/engine";
+import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, parseBody, rateLimitOr429 } from "@/lib/server/http";
+import { errorResponse, guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,8 +28,8 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const limited = rateLimitOr429(request, "explain", RATE_LIMIT_PER_MINUTE);
-  if (limited) return limited;
+  const blocked = guardRequest(request, "explain", RATE_LIMIT_PER_MINUTE);
+  if (blocked) return blocked;
 
   const body = await parseBody(request, schema);
   if (!body.ok) return body.response;
@@ -43,20 +38,16 @@ export async function POST(request: Request) {
     return errorResponse(503, "ai_unavailable", "AI explanations are not configured on this server.");
   }
 
-  let analysis: Analysis;
-  try {
-    analysis = analyzeDocument(body.data.text);
-  } catch (err) {
-    if (err instanceof DocumentTooSmallError || err instanceof DocumentTooLargeError) {
-      return errorResponse(422, "invalid_document", err.message);
-    }
-    return errorResponse(500, "explain_failed", "Could not explain that clause.");
-  }
+  const result = analyzeOrError(body.data.text, {
+    code: "explain_failed",
+    message: "Could not explain that clause.",
+  });
+  if (!result.ok) return result.response;
 
-  const clause = analysis.clauses.find((c) => c.id === body.data.clauseId);
+  const clause = result.analysis.clauses.find((c) => c.id === body.data.clauseId);
   if (!clause) return errorResponse(404, "clause_not_found", "That clause is not in this document.");
 
-  const explanation = await explainClause(analysis, clause, body.data.language);
+  const explanation = await explainClause(result.analysis, clause, body.data.language, request.signal);
   if (!explanation) {
     return errorResponse(502, "ai_failed", "The AI could not explain this clause right now. Please try again.");
   }
