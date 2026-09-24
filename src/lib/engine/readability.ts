@@ -6,11 +6,9 @@
  * are calibrated for contracts (almost nothing legal scores "easy").
  */
 
-import { GLOSSARY } from "./glossary";
+import { matchGlossary } from "./glossary";
 import { countSyllables, splitSentences, tokenize } from "./text";
 import type { Readability } from "./types";
-
-const JARGON_FORMS: string[] = GLOSSARY.flatMap((g) => [g.term, ...(g.aliases ?? [])]);
 
 export function computeReadability(text: string): Readability {
   const sentences = splitSentences(text);
@@ -30,11 +28,9 @@ export function computeReadability(text: string): Readability {
   const band: Readability["band"] =
     fleschScore < 30 ? "very hard" : fleschScore < 50 ? "hard" : fleschScore < 65 ? "moderate" : "easy";
 
-  const lower = text.toLowerCase();
-  let jargonHits = 0;
-  for (const form of JARGON_FORMS) {
-    if (lower.includes(form.toLowerCase())) jargonHits += 1;
-  }
+  // Whole-word matches only, counted once per term: a plain substring test
+  // would find "lien" in every "client" and "term" in every "determine".
+  const jargonHits = matchGlossary(text).length;
   const jargonDensity =
     wordCount > 0 ? Math.round((jargonHits / wordCount) * 100 * 10) / 10 : 0;
 
