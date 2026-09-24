@@ -28,6 +28,10 @@ const TYPE_SIGNATURES: TypeSignature[] = [
     label: "Rental agreement",
     signals: [
       { pattern: /\b(?:lease|rental)\s+(?:agreement|deed)\b/i, weight: 4 },
+      // Paying-guest rooms and Indian leave-and-licence homes are rentals in
+      // all but name. (Bare "licensor"/"licensee" would also match software
+      // licences, so only the housing phrases count.)
+      { pattern: /\b(?:paying\s+guest|leave\s+and\s+licen[cs]e|pg\s+accommodation)\b/i, weight: 4 },
       { pattern: /\b(?:landlord|lessor)\b/i, weight: 2 },
       { pattern: /\b(?:tenant|lessee)\b/i, weight: 2 },
       { pattern: /\brent\b/i, weight: 1 },
