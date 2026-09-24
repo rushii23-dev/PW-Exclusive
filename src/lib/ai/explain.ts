@@ -12,7 +12,7 @@ import { z } from "zod";
 import type { Analysis, Clause } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
-import { formatClauses } from "./grounding";
+import { fenceUntrusted, formatClauses } from "./grounding";
 import type { LanguageCode } from "./languages";
 
 export interface ClauseExplanation {
@@ -68,6 +68,7 @@ export async function explainClause(
   analysis: Analysis,
   clause: Clause,
   language: LanguageCode,
+  signal?: AbortSignal,
 ): Promise<ClauseExplanation | null> {
   const findings = clause.findings.map((f) => ({
     flag: f.label,
@@ -81,10 +82,11 @@ export async function explainClause(
     system: `${baseRules(language)}
 
 Your task: explain a single clause from a ${analysis.documentTypeLabel.toLowerCase()} to the person who is being asked to sign it. Talk about this clause only.`,
-    prompt: `<clause_to_explain>\n${formatClauses([clause])}\n</clause_to_explain>\n\n<rule_engine_flags>\n${JSON.stringify(findings)}\n</rule_engine_flags>`,
+    prompt: `<clause_to_explain>\n${formatClauses([clause])}\n</clause_to_explain>\n\n<rule_engine_flags>\n${fenceUntrusted(JSON.stringify(findings))}\n</rule_engine_flags>`,
     schema,
     validate: reply,
     temperature: 0.3,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;

@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Analysis, Comparison } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
+import { fenceUntrusted } from "./grounding";
 import type { LanguageCode } from "./languages";
 
 export interface CompareVerdict {
@@ -78,6 +79,7 @@ export async function generateCompareVerdict(
   b: Analysis,
   comparison: Comparison,
   language: LanguageCode,
+  signal?: AbortSignal,
 ): Promise<CompareVerdict | null> {
   const input = {
     documentA: side(a),
@@ -94,10 +96,11 @@ export async function generateCompareVerdict(
     system: `${baseRules(language)}
 
 Your task: the reader is choosing between, or checking changes between, two documents. Using only the structured comparison you are given, explain the trade-offs from the reader's side. Refer to them as "Document A" and "Document B". Do not add facts that are not in the comparison.`,
-    prompt: `<comparison>\n${JSON.stringify(input)}\n</comparison>`,
+    prompt: `<comparison>\n${fenceUntrusted(JSON.stringify(input))}\n</comparison>`,
     schema,
     validate: reply,
     temperature: 0.3,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;

@@ -13,6 +13,7 @@ import { z } from "zod";
 import type { Analysis } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
+import { fenceUntrusted } from "./grounding";
 import type { LanguageCode } from "./languages";
 
 export interface AiBrief {
@@ -67,9 +68,13 @@ const schema = {
   required: ["headline", "paragraphs", "topConcerns", "beforeYouSign"],
 };
 
-/** What the model sees: findings and facts, never the raw document. */
+/**
+ * What the model sees: findings and facts, never the raw document. Evidence
+ * and facts are still the document's words, so the whole blob is fenced.
+ */
 function briefInput(analysis: Analysis): string {
-  return JSON.stringify({
+  return fenceUntrusted(
+    JSON.stringify({
     documentType: analysis.documentTypeLabel,
     riskProfile: analysis.riskProfile,
     readability: { band: analysis.readability.band, words: analysis.readability.wordCount },
@@ -85,12 +90,14 @@ function briefInput(analysis: Analysis): string {
     keyFacts: analysis.keyFacts.slice(0, 12).map((e) => `${e.kind}: ${e.text}`),
     yourObligations: analysis.yourObligations.slice(0, 8).map((o) => o.text),
     checklist: analysis.checklist.map((c) => c.text),
-  });
+    }),
+  );
 }
 
 export async function generateAiBrief(
   analysis: Analysis,
   language: LanguageCode,
+  signal?: AbortSignal,
 ): Promise<AiBrief | null> {
   const ai = await generateJson({
     feature: "brief",
@@ -101,6 +108,7 @@ Your task: turn the rule engine's findings about a ${analysis.documentTypeLabel.
     schema,
     validate: reply,
     temperature: 0.4,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;

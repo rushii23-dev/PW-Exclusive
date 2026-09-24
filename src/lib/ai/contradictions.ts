@@ -13,7 +13,7 @@ import { z } from "zod";
 import type { Analysis, Inconsistency } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
-import { formatClauses, verifyCitations } from "./grounding";
+import { fenceUntrusted, formatClauses, verifyCitations } from "./grounding";
 import type { LanguageCode } from "./languages";
 
 /** Past this size a full cross-read is too slow for an interactive request. */
@@ -74,6 +74,7 @@ const schema = {
 export async function aiContradictions(
   analysis: Analysis,
   language: LanguageCode,
+  signal?: AbortSignal,
 ): Promise<Inconsistency[] | null> {
   const size = analysis.clauses.reduce((n, c) => n + c.text.length, 0);
   if (analysis.clauses.length < 2) return [];
@@ -86,10 +87,11 @@ export async function aiContradictions(
     system: `${baseRules(language)}
 
 Your task: read the whole ${analysis.documentTypeLabel.toLowerCase()} and find places where two clauses contradict each other, or where one clause makes another ambiguous — something a reasonable reader could not reconcile. Different rules for different parties are not a contradiction unless they conflict. Standard boilerplate is not a contradiction. Report only real problems; an empty list is a perfectly good answer.`,
-    prompt: `<document>\n${formatClauses(analysis.clauses)}\n</document>\n\n<already_reported>\n${JSON.stringify(alreadyFound)}\n</already_reported>`,
+    prompt: `<document>\n${formatClauses(analysis.clauses)}\n</document>\n\n<already_reported>\n${fenceUntrusted(JSON.stringify(alreadyFound))}\n</already_reported>`,
     schema,
     validate: reply,
     temperature: 0.1,
+    signal,
   });
   if (!ai) return null;
   const result = ai.data;
