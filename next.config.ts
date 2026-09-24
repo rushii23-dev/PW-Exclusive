@@ -18,6 +18,10 @@ const csp = [
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "media-src 'none'",
+  "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -32,9 +36,17 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    value:
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), display-capture=(), browsing-topics=()",
   },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  // Keep other sites' windows and embeds out of this origin's process and
+  // its responses out of theirs.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  { key: "Origin-Agent-Cluster", value: "?1" },
+  { key: "X-DNS-Prefetch-Control", value: "off" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   // Documents pass through these responses; no shared cache may keep them.
   { key: "Cache-Control", value: "no-store" },
 ];
