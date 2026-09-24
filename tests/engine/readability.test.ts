@@ -51,3 +51,12 @@ describe("findJargon", () => {
     expect(hits.map((h) => h.term)).not.toContain("lien");
   });
 });
+
+describe("jargon density", () => {
+  it("counts glossary terms as whole words only", () => {
+    // Substring matching would count "lien" (client) and "term" (determine).
+    const plain = "The client and the staff determine the date together. We like short words.";
+    expect(computeReadability(plain).jargonDensity).toBe(0);
+    expect(computeReadability(`${plain} A lien applies.`).jargonDensity).toBeGreaterThan(0);
+  });
+});
