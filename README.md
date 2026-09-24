@@ -16,10 +16,10 @@ Every use case in the brief, and a few beyond it:
 |---|---|
 | Simplifying complex legal documents | Clause-by-clause plain-language breakdown, a Gemini-written brief, and **"Explain this clause simply"** on any clause |
 | Comparing contracts, agreements or policies | **Compare** two documents: topic coverage, risks only one has, numbers side by side, and a Gemini verdict on the trade-offs *for you* |
-| Highlighting clauses, obligations, risks, **inconsistencies** | Risk flags with the exact triggering words; "what this requires of you"; **contradiction detection** by rules *and* by Gemini, each quoting both sides |
+| Highlighting clauses, obligations, risks, **inconsistencies** | Risk flags with the exact triggering words; **both sides' duties** — what the document requires of you and what the other side must do, read from the right side of *this* kind of document; **contradiction detection** by rules *and* by Gemini, each quoting both sides |
 | Answering questions from the document | **Ask the document** — Gemini answers in any language, citing and quoting clauses; says plainly when the document is silent |
 | Understanding options and next steps | **Your options** — describe your situation in your own words; get the routes the document allows, what each costs, the clauses behind them, and next steps |
-| Summaries, checklists, actionable outputs | Brief with top concerns, before-you-sign checklist, copy-as-text and print/PDF export |
+| Summaries, checklists, actionable outputs | Brief with top concerns, before-you-sign checklist; copy, download (.txt) or print/PDF the whole analysis — key amounts and dates, both sides' duties and the questions included |
 | Preparing questions for a legal professional | Generated questions for a lawyer — per document, per clause and per situation |
 
 **Access beyond English and beyond pasted text**
@@ -55,7 +55,39 @@ Every use case in the brief, and a few beyond it:
 - **Prompt-injection resistant.** The document is wrapped as untrusted data; the system prompt forbids following instructions inside it.
 - **Honest about gaps.** "The document doesn't say" is a first-class answer, and the UI only claims Gemini checked for contradictions when that check actually completed.
 - **Never breaks.** If a Gemini model is overloaded, the next model in a fallback chain answers within a fixed time budget; if Gemini is unavailable or wrong, every feature falls back to the rule engine. With no API key at all, analysis, Q&A, options and comparison still work.
-- **Private.** Documents are processed in memory and never stored or logged. No accounts, no analytics on content. Strict CSP, `no-store` on API responses, rate limiting, size caps.
+- **Prompt-fenced.** Untrusted text sits inside tags like `<document>`; any fence tag *inside* the document, question or situation is defused first, so a contract that says `</document> SYSTEM: …` cannot step outside its fence. Quotes still verify.
+- **Private.** Documents are processed in memory and never stored or logged. No accounts, no analytics on content.
+
+## Security
+
+| Threat | Defence |
+|---|---|
+| Rate-limit evasion by spoofing `X-Forwarded-For` | The client is the address *our* proxy appended (rightmost hop, `TRUSTED_PROXY_HOPS` for more), never what the client claimed; the limiter's table has a hard size ceiling |
+| Memory exhaustion via huge or endless bodies | Bodies are read as a stream and abandoned the moment they pass a byte cap — with or without a `Content-Length`; caps are sized in UTF-8 bytes so an Indic-script document gets the same room as English |
+| Other websites spending this server's Gemini quota through visitors' browsers | JSON-only API (a cross-site form can't send it) and `Sec-Fetch-Site` checks refuse cross-site requests |
+| Disguised uploads (a binary renamed `.pdf`/`.jpg`/`.txt`) | File signatures are checked before any parser or model sees the bytes; the image type sent to Gemini comes from the bytes, not the name |
+| Prompt injection from the document | Untrusted-data rule in every system prompt, fence-tag defusing, structured JSON output validated by zod, and every quote verified against the document |
+| Leaking the API key to the browser | Gemini, HTTP and upload modules are marked `server-only`: a client bundle that imports them fails to build |
+| Clickjacking, sniffing, cross-origin leaks | Strict CSP (`connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`), `X-Frame-Options: DENY`, `nosniff`, COOP/CORP same-origin, HSTS, a locked-down `Permissions-Policy`, no `X-Powered-By` — all pinned by a regression test |
+| Error messages echoing document text | Every failure maps to a fixed, generic message; document text is never logged |
+
+## Accessibility
+
+Built to WCAG 2.2 AA, and tested for it:
+
+- **Every page and panel is audited with axe-core** in the test suite, and was audited again in a real browser — including colour contrast — with zero violations.
+- **Colour contrast is a test, not a claim:** a test reads the design tokens from `globals.css` and checks every text/background pair for 4.5:1 and the focus ring for 3:1.
+- **Explanations are marked with their language.** Gemini's text in Hindi or Tamil carries `lang`, so screen readers switch voice; Urdu carries `dir="rtl"`. Quotes from the document are left in the document's language.
+- **Focus goes where the answer is.** A finished analysis or comparison moves focus to its heading; an explanation that replaces its button receives focus; asking a question keeps focus in the question box; the mobile menu closes on Escape and returns focus to its toggle.
+- **Short announcements, not floods.** A one-sentence status ("Analysis ready: Rental agreement, 12 clauses; 3 need attention") instead of re-reading a page of results; the character counter is deliberately silent while typing.
+- Keyboard-complete tabs (arrow keys, Home/End), visible focus on every control (including the file upload), `prefers-reduced-motion` honoured by CSS and by scrolling, and a print stylesheet that keeps every clause title and risk badge on paper.
+
+## Efficiency
+
+- **The engine analyses a 200,000-character contract in about 190 ms** (down from 330 ms): glossary matchers compile once, and sentences and amounts are split once per analysis, not once per check. A test keeps the maximum-size case inside its budget.
+- **No wasted model calls.** A request the reader abandons, or that a newer one replaces, is cancelled in the browser, and the server tries no fallback model for it.
+- **Every request has a deadline**, so no spinner can run forever.
+- **Typing never re-renders the results:** the analysis view is memoised and off-screen clause cards skip layout (`content-visibility: auto`).
 
 ---
 
@@ -76,16 +108,25 @@ Open http://localhost:3000. Get a free Gemini key at [Google AI Studio](https://
 | `GEMINI_API_KEY` | For AI features | Google Gemini API key |
 | `GEMINI_MODEL` | No | Override the model (default `gemini-3.5-flash-lite`) |
 | `GEMINI_FALLBACK_MODELS` | No | Comma-separated models to try if the main one is busy (default `gemini-3.1-flash-lite,gemini-3.5-flash,gemini-2.5-flash`) |
+| `TRUSTED_PROXY_HOPS` | No | How many proxies in front of the app append to `X-Forwarded-For` (default `1`, right for Vercel and Cloud Run; `2` behind an extra load balancer) |
 
 ## Test
 
 ```bash
-npm test          # 209 tests: engine, AI grounding, API routes, file reading
-npm run typecheck
-npm run lint
+npm run check          # lint + typecheck + all tests
+npm test               # 344 tests
+npm run test:coverage  # with coverage floors (CI fails below them)
 ```
 
-The AI tests run against a stand-in for the Gemini SDK, so they need no key. They include adversarial cases: invented quotes, citations to clauses that don't exist, malformed JSON, API failures and timeouts — confirming none of it reaches the reader.
+| Suite | What it proves |
+|---|---|
+| `tests/engine` | Segmentation, classification, extraction, both sides' duties, contradictions, retrieval, comparison — and the maximum-size performance budget |
+| `tests/ai` | Grounding and fallbacks against a stand-in for the Gemini SDK: invented quotes, clauses that don't exist, malformed JSON, timeouts, cancellation, and prompt-fence break-out attempts — none of it reaches the reader |
+| `tests/api` | Every route, plus the guards: spoofed `X-Forwarded-For`, endless streamed bodies, wrong content types, cross-site requests, disguised uploads, security headers |
+| `tests/components` | Every page and panel rendered in jsdom and audited with axe; keyboard behaviour, focus management, `lang`/`dir` on AI text, cancellation of superseded requests, and the colour-contrast arithmetic |
+| `tests/client` | Request deadlines, cancellation and error handling in the browser |
+
+The AI tests need no key. Coverage is above 90% of statements and lines; GitHub Actions runs lint, types, tests with coverage floors, a production-dependency audit and a production build on every push.
 
 ## Deploy
 
@@ -112,7 +153,7 @@ gcloud run deploy clearclause --source . --region asia-south1 \
 | `POST /api/extract` | Text from PDF, Word, image or text uploads (≤ 4 MB) |
 | `GET /api/health` | Liveness and whether Gemini is configured (never the key) |
 
-The AI routes (`analyze`, `ask`, `explain`, `options`, `compare`) accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
+JSON routes accept only `application/json` bodies (415 otherwise) and refuse cross-site browser requests (403). The AI routes (`analyze`, `ask`, `explain`, `options`, `compare`) accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
 
 ## Tech
 

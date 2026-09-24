@@ -36,7 +36,7 @@ const PRINCIPLES = [
   {
     icon: TestTubes,
     title: "Measured, not asserted",
-    body: `An extensive automated test suite covers segmentation, classification, extraction, contradiction checks, retrieval, comparison, file reading, and every AI feature — including tests that feed the AI invented quotes and confirm they never reach the reader. The ${GLOSSARY.length}-term glossary and every sample document double as fixtures.`,
+    body: `An extensive automated test suite covers segmentation, classification, extraction, contradiction checks, retrieval, comparison, file reading, and every AI feature — including tests that feed the AI invented quotes and confirm they never reach the reader, and an accessibility audit of every page and panel. The ${GLOSSARY.length}-term glossary and every sample document double as fixtures.`,
   },
 ];
 
