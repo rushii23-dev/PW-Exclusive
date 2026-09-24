@@ -36,3 +36,16 @@ describe("glossary", () => {
     expect(terms(PG_LICENCE)).toContain("security deposit");
   });
 });
+
+describe("glossary matching is whole-word", () => {
+  it("does not find a term inside a longer word", () => {
+    // "lien" hides in "client", "term" in "determine", "assign" in "reassigned".
+    expect(terms("The client will determine the date; staff may be reassigned.")).toEqual([]);
+  });
+
+  it("still finds a term and its aliases as words, in any case", () => {
+    expect(terms("A LIEN on the flat.")).toContain("lien");
+    expect(terms("They agree to indemnify us.")).toContain("indemnify");
+    expect(terms("It is a leave and license arrangement.")).toContain("leave and licence");
+  });
+});
