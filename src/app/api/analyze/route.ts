@@ -13,14 +13,9 @@ import { z } from "zod";
 import { generateAiBrief } from "@/lib/ai/brief";
 import { aiContradictions } from "@/lib/ai/contradictions";
 import { isAiConfigured } from "@/lib/ai/gemini";
-import {
-  analyzeDocument,
-  DocumentTooLargeError,
-  DocumentTooSmallError,
-  type Analysis,
-} from "@/lib/engine";
+import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, parseBody, rateLimitOr429 } from "@/lib/server/http";
+import { guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,28 +30,24 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const limited = rateLimitOr429(request, "analyze", RATE_LIMIT_PER_MINUTE);
-  if (limited) return limited;
+  const blocked = guardRequest(request, "analyze", RATE_LIMIT_PER_MINUTE);
+  if (blocked) return blocked;
 
   const body = await parseBody(request, schema);
   if (!body.ok) return body.response;
 
-  let analysis: Analysis;
-  try {
-    analysis = analyzeDocument(body.data.text);
-  } catch (err) {
-    if (err instanceof DocumentTooSmallError || err instanceof DocumentTooLargeError) {
-      return errorResponse(422, "invalid_document", err.message);
-    }
-    // Deliberately generic: error details could echo document content.
-    return errorResponse(500, "analysis_failed", "Could not analyse the document.");
-  }
+  const result = analyzeOrError(body.data.text, {
+    code: "analysis_failed",
+    message: "Could not analyse the document.",
+  });
+  if (!result.ok) return result.response;
+  const { analysis } = result;
 
   const useAi = body.data.ai && isAiConfigured();
   const [brief, contradictions] = useAi
     ? await Promise.all([
-        generateAiBrief(analysis, body.data.language),
-        aiContradictions(analysis, body.data.language),
+        generateAiBrief(analysis, body.data.language, request.signal),
+        aiContradictions(analysis, body.data.language, request.signal),
       ])
     : [null, null];
 
@@ -68,6 +59,8 @@ export async function POST(request: Request) {
     ai: {
       available: isAiConfigured(),
       used: useAi,
+      /** Language the AI text is written in, so the page can mark it up. */
+      language: body.data.language,
       brief,
       /** True only if Gemini actually completed its read for contradictions. */
       contradictionsChecked: contradictions !== null,
