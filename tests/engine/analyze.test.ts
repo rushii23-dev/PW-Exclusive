@@ -11,6 +11,7 @@ import {
   EMPLOYMENT_CONTRACT,
   FREELANCE_AGREEMENT,
   NDA,
+  PG_LICENCE,
   RENTAL_AGREEMENT,
   SAMPLES,
   SUBSCRIPTION_TOS,
@@ -173,5 +174,59 @@ describe("toPlainText export", () => {
 
   it("leaves the section out when there is nothing to report", () => {
     expect(toPlainText(analyzeDocument(RENTAL_AGREEMENT))).not.toContain("CONTRADICTS ITSELF");
+  });
+});
+
+describe("obligations on both sides", () => {
+  it("lists what the other side must do, separately from the reader's duties", () => {
+    const a = analyzeDocument(FREELANCE_AGREEMENT);
+    expect(a.theirObligations.some((o) => /Client shall pay the Contractor/.test(o.text))).toBe(true);
+    expect(a.yourObligations.some((o) => /Client shall pay/.test(o.text))).toBe(false);
+    expect(a.yourObligations.length).toBeGreaterThan(0);
+  });
+
+  it("puts both sides' duties and the key facts in the text export", () => {
+    const text = toPlainText(analyzeDocument(FREELANCE_AGREEMENT));
+    expect(text).toContain("WHAT THE DOCUMENT REQUIRES OF YOU");
+    expect(text).toContain("WHAT THE OTHER SIDE MUST DO");
+    expect(text).toContain("KEY AMOUNTS, DATES AND PERIODS");
+    expect(text).toContain("USD 4,000");
+  });
+});
+
+describe("performance", () => {
+  it("analyses a maximum-size document well inside an interactive budget", () => {
+    let big = "";
+    let n = 0;
+    const all = [RENTAL_AGREEMENT, FREELANCE_AGREEMENT].join("\n\n");
+    while (big.length < MAX_DOCUMENT_CHARS - 5000) big += `${all.replace(/^(\d+)\./gm, () => `${++n}.`)}\n\n`;
+    const started = performance.now();
+    const a = analyzeDocument(big.slice(0, MAX_DOCUMENT_CHARS));
+    const elapsed = performance.now() - started;
+    expect(a.clauses.length).toBeGreaterThan(300);
+    // ~200 ms on a laptop; the budget leaves room for slow CI machines.
+    expect(elapsed).toBeLessThan(2500);
+  });
+});
+
+describe("paying-guest and leave-and-licence documents", () => {
+  it("are read as rentals, so the guest's duties are the reader's", () => {
+    const a = analyzeDocument(PG_LICENCE);
+    expect(a.documentType).toBe("rental-agreement");
+    expect(a.yourObligations.some((o) => /Guest shall pay a monthly fee/.test(o.text))).toBe(true);
+  });
+
+  it("do not pull software licences in with them", () => {
+    const eula = `SOFTWARE LICENCE AGREEMENT
+
+1. GRANT
+The Licensor grants the Licensee a non-exclusive licence to use the software on one device.
+
+2. FEES
+The Licensee shall pay the licence fee of USD 99 per year to the Licensor.
+
+3. TERMINATION
+The Licensor may terminate this licence if the Licensee breaches it.`;
+    expect(analyzeDocument(eula).documentType).not.toBe("rental-agreement");
   });
 });
