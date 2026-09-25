@@ -2,6 +2,7 @@
 
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AskPanel } from "@/components/analyze/AskPanel";
@@ -99,6 +100,34 @@ describe("ClauseExplainer", () => {
     // The proposed wording is written to drop into the document, in its language.
     expect(screen.getByText(explanation.fairerWording!)).not.toHaveAttribute("lang");
     await expectNoA11yViolations();
+  });
+
+  it("asks Gemini once per clause, even when the card leaves the page and comes back", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({ "/api/explain": () => json({ explanation }) });
+    // Filtering the clause list unmounts a card; clearing the filter remounts it.
+    function Filterable() {
+      const [shown, setShown] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setShown((s) => !s)}>
+            Toggle filter
+          </button>
+          {shown && <ClauseExplainer clauseId="clause-2" />}
+        </>
+      );
+    }
+    renderWithAi(<Filterable />, { documentText: RENTAL_AGREEMENT });
+
+    await user.click(screen.getByRole("button", { name: "Explain this clause simply" }));
+    await screen.findByRole("region", { name: "Plain-words explanation" });
+    await user.click(screen.getByRole("button", { name: "Toggle filter" }));
+    await user.click(screen.getByRole("button", { name: "Toggle filter" }));
+
+    await user.click(screen.getByRole("button", { name: "Explain this clause simply" }));
+    const region = await screen.findByRole("region", { name: "Plain-words explanation" });
+    await waitFor(() => expect(region).toHaveFocus());
+    expect(calls).toHaveLength(1);
   });
 
   it("reports a failure next to the button and keeps the button usable", async () => {
