@@ -1,3 +1,5 @@
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -5,7 +7,7 @@ import { POST as analyzePost } from "@/app/api/analyze/route";
 import { POST as comparePost } from "@/app/api/compare/route";
 import { MAX_DOCUMENT_CHARS } from "@/lib/engine";
 import { NDA, RENTAL_AGREEMENT } from "@/lib/samples";
-import { bodyLimit, clientKey, guardRequest, parseBody } from "@/lib/server/http";
+import { bodyLimit, clientKey, guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
 import {
   checkRateLimit,
   MAX_TRACKED_CLIENTS,
@@ -174,5 +176,53 @@ describe("routes refuse bodies that are not JSON", () => {
       req({ "content-type": "application/json" }, JSON.stringify({ textA: RENTAL_AGREEMENT, textB: NDA, ai: false })),
     );
     expect(res.status).toBe(200);
+  });
+});
+
+describe("jsonResponse", () => {
+  /** Large, repetitive, JSON-shaped — like an analysis. */
+  const body = { clauses: Array.from({ length: 200 }, (_, i) => ({ id: `clause-${i + 1}`, text: RENTAL_AGREEMENT })) };
+  const raw = JSON.stringify(body);
+
+  const accepting = (encoding: string) => req({ "accept-encoding": encoding });
+
+  async function bytes(res: Response): Promise<Buffer> {
+    return Buffer.from(await res.arrayBuffer());
+  }
+
+  it("prefers brotli, and the body decompresses to exactly the JSON", async () => {
+    const res = await jsonResponse(accepting("gzip, deflate, br, zstd"), body);
+    expect(res.headers.get("content-encoding")).toBe("br");
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(res.headers.get("vary")).toBe("accept-encoding");
+    const compressed = await bytes(res);
+    expect(brotliDecompressSync(compressed).toString()).toBe(raw);
+    // Repeated clause text is exactly what a long window folds away.
+    expect(compressed.byteLength).toBeLessThan(raw.length / 50);
+  });
+
+  it("falls back to gzip when that is all the client takes", async () => {
+    const res = await jsonResponse(accepting("gzip"), body);
+    expect(res.headers.get("content-encoding")).toBe("gzip");
+    expect(gunzipSync(await bytes(res)).toString()).toBe(raw);
+  });
+
+  it("respects a coding the client refuses with q=0", async () => {
+    const res = await jsonResponse(accepting("br;q=0, gzip;q=0.8"), body);
+    expect(res.headers.get("content-encoding")).toBe("gzip");
+  });
+
+  it("sends plain JSON when the client accepts no compression", async () => {
+    for (const encoding of ["", "identity", "deflate", "br;q=0"]) {
+      const res = await jsonResponse(accepting(encoding), body);
+      expect(res.headers.get("content-encoding")).toBeNull();
+      expect(await res.json()).toEqual(body);
+    }
+  });
+
+  it("leaves small bodies alone, where compression would cost more than it saves", async () => {
+    const res = await jsonResponse(accepting("br, gzip"), { answer: 42 });
+    expect(res.headers.get("content-encoding")).toBeNull();
+    expect(await res.json()).toEqual({ answer: 42 });
   });
 });
