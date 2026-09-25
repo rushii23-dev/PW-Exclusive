@@ -7,7 +7,6 @@
  * quote, the rule engine answers instead. Stateless: nothing is stored.
  */
 
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { aiAnswer, engineAnswer } from "@/lib/ai/answer";
@@ -16,7 +15,7 @@ import { ClauseIndex } from "@/lib/engine";
 import { QUESTION_MAX_CHARS, QUESTION_MIN_CHARS } from "@/lib/limits";
 import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { guardRequest, parseBody } from "@/lib/server/http";
+import { guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -53,5 +52,5 @@ export async function POST(request: Request) {
     (isAiConfigured() ? await aiAnswer(result.analysis, question, language, index, request.signal) : null) ??
     engineAnswer(result.analysis, question, index);
 
-  return NextResponse.json({ answer });
+  return jsonResponse(request, { answer });
 }
