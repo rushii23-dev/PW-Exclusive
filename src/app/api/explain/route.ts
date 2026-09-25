@@ -5,6 +5,9 @@
  *
  * Needs Gemini; without it the client already shows the engine's own
  * explanation for every flagged clause, so this route reports 503.
+ *
+ * Only the requested clause is read: the explanation never looks at the rest
+ * of the analysis, so there is no reason to compute it.
  */
 
 import { NextResponse } from "next/server";
@@ -12,7 +15,8 @@ import { z } from "zod";
 
 import { explainClause } from "@/lib/ai/explain";
 import { isAiConfigured } from "@/lib/ai/gemini";
-import { analyzeOrError } from "@/lib/server/analysis";
+import { analyzeClause } from "@/lib/engine";
+import { runEngine } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
 import { errorResponse, guardRequest, parseBody } from "@/lib/server/http";
 
@@ -38,16 +42,15 @@ export async function POST(request: Request) {
     return errorResponse(503, "ai_unavailable", "AI explanations are not configured on this server.");
   }
 
-  const result = analyzeOrError(body.data.text, {
+  const result = runEngine(() => analyzeClause(body.data.text, body.data.clauseId), {
     code: "explain_failed",
     message: "Could not explain that clause.",
   });
   if (!result.ok) return result.response;
+  if (!result.value) return errorResponse(404, "clause_not_found", "That clause is not in this document.");
 
-  const clause = result.analysis.clauses.find((c) => c.id === body.data.clauseId);
-  if (!clause) return errorResponse(404, "clause_not_found", "That clause is not in this document.");
-
-  const explanation = await explainClause(result.analysis, clause, body.data.language, request.signal);
+  const { documentTypeLabel, clause } = result.value;
+  const explanation = await explainClause({ documentTypeLabel }, clause, body.data.language, request.signal);
   if (!explanation) {
     return errorResponse(502, "ai_failed", "The AI could not explain this clause right now. Please try again.");
   }
