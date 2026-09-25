@@ -12,6 +12,7 @@ import { RiskMeter } from "@/components/RiskMeter";
 import type { CompareVerdict } from "@/lib/ai/compare";
 import type { LanguageCode } from "@/lib/ai/languages";
 import { postJson } from "@/lib/client/api";
+import { ResponseCache } from "@/lib/client/cache";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
 import { formatCount, type Analysis, type Comparison } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS } from "@/lib/limits";
@@ -23,6 +24,11 @@ interface CompareResponse {
   b: Analysis;
   comparison: Comparison;
   ai: { available: boolean; used: boolean; verdict: CompareVerdict | null };
+}
+
+/** Worth keeping only once Gemini's verdict is in; without it, ask again. */
+function isComplete({ ai }: CompareResponse): boolean {
+  return !ai.used || ai.verdict !== null;
 }
 
 function DocumentInput({
@@ -95,6 +101,9 @@ export function Comparer() {
   const aiStatus = useAiStatus();
   const [language, setLanguage] = useLanguagePreference();
   const nextSignal = useLatestRequest();
+  // Comparing the same pair again in the same language shows the finished
+  // comparison instead of re-running Gemini.
+  const [comparisons] = useState(() => new ResponseCache<CompareResponse>(3));
 
   async function compare() {
     if (pending) return;
@@ -102,10 +111,13 @@ export function Comparer() {
     setError(null);
     setStatus("Comparing the documents…");
     const asked = language;
-    const res = await postJson<CompareResponse>(
-      "/api/compare",
-      { textA: textA.trim(), textB: textB.trim(), language: asked },
-      { signal: nextSignal() },
+    const a = textA.trim();
+    const b = textB.trim();
+    const signal = nextSignal();
+    const res = await comparisons.load(
+      JSON.stringify([asked, a, b]),
+      () => postJson<CompareResponse>("/api/compare", { textA: a, textB: b, language: asked }, { signal }),
+      isComplete,
     );
     if (!res.ok && res.aborted) return;
     setPending(false);
