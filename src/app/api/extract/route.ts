@@ -7,10 +7,9 @@
  * request and never written anywhere.
  */
 
-import { NextResponse } from "next/server";
 
 import { ExtractError, extractDocumentText, MAX_UPLOAD_BYTES } from "@/lib/server/extract";
-import { errorResponse, guardRequest, readBodyCapped } from "@/lib/server/http";
+import { errorResponse, guardRequest, jsonResponse, readBodyCapped } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -68,7 +67,7 @@ export async function POST(request: Request) {
       bytes,
       signal: request.signal,
     });
-    return NextResponse.json(extraction);
+    return jsonResponse(request, extraction);
   } catch (err) {
     if (err instanceof ExtractError) return errorResponse(err.status, err.code, err.message);
     // Generic on purpose: parser errors can quote file content.
