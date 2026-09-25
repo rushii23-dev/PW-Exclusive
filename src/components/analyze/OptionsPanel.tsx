@@ -13,7 +13,6 @@ import { useAi } from "@/components/ai/AiContext";
 import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
 import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 import type { SituationGuide } from "@/lib/ai/options";
-import { postJson } from "@/lib/client/api";
 import { useLatestRequest } from "@/lib/client/hooks";
 import type { DocumentType } from "@/lib/engine/client";
 import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
@@ -60,7 +59,7 @@ const URGENCY = {
 } as const;
 
 export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
-  const { documentText, language } = useAi();
+  const { session, language } = useAi();
   const [situation, setSituation] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,11 +73,7 @@ export function OptionsPanel({ documentType }: { documentType: DocumentType }) {
     setPending(true);
     setError(null);
     const asked = language;
-    const response = await postJson<{ guide: SituationGuide }>(
-      "/api/options",
-      { text: documentText, situation: trimmed, language: asked },
-      { signal: nextSignal() },
-    );
+    const response = await session.options(trimmed, asked, nextSignal());
     if (!response.ok && response.aborted) return;
     setPending(false);
     if (response.ok) setResult({ guide: response.data.guide, language: asked });
