@@ -222,17 +222,33 @@ describe("analyzeClause", () => {
 });
 
 describe("performance", () => {
-  it("analyses a maximum-size document well inside an interactive budget", () => {
+  /** Real clauses, renumbered and repeated to the size cap. */
+  function maximumSizeDocument(): string {
     let big = "";
     let n = 0;
     const all = [RENTAL_AGREEMENT, FREELANCE_AGREEMENT].join("\n\n");
     while (big.length < MAX_DOCUMENT_CHARS - 5000) big += `${all.replace(/^(\d+)\./gm, () => `${++n}.`)}\n\n`;
+    return big.slice(0, MAX_DOCUMENT_CHARS);
+  }
+
+  it("analyses a maximum-size document well inside an interactive budget", () => {
+    const big = maximumSizeDocument();
     const started = performance.now();
-    const a = analyzeDocument(big.slice(0, MAX_DOCUMENT_CHARS));
+    const a = analyzeDocument(big);
     const elapsed = performance.now() - started;
     expect(a.clauses.length).toBeGreaterThan(300);
-    // ~200 ms on a laptop; the budget leaves room for slow CI machines.
+    // ~150 ms on a laptop; the budget leaves room for slow CI machines.
     expect(elapsed).toBeLessThan(2500);
+  });
+
+  it("reads one clause of a maximum-size document without analysing the rest", () => {
+    const big = maximumSizeDocument();
+    const started = performance.now();
+    const one = analyzeClause(big, "clause-200");
+    const elapsed = performance.now() - started;
+    expect(one?.clause.id).toBe("clause-200");
+    // ~15 ms on a laptop — segmenting the document is most of it.
+    expect(elapsed).toBeLessThan(500);
   });
 });
 
