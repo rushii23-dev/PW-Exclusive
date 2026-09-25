@@ -225,4 +225,19 @@ describe("jsonResponse", () => {
     expect(res.headers.get("content-encoding")).toBeNull();
     expect(await res.json()).toEqual({ answer: 42 });
   });
+
+  it("compresses a real analysis end to end", async () => {
+    const res = await analyzePost(
+      req(
+        { "content-type": "application/json", "accept-encoding": "br" },
+        JSON.stringify({ text: RENTAL_AGREEMENT, ai: false }),
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-encoding")).toBe("br");
+    const compressed = await bytes(res);
+    const json = JSON.parse(brotliDecompressSync(compressed).toString());
+    expect(json.analysis.documentType).toBe("rental-agreement");
+    expect(compressed.byteLength).toBeLessThan(JSON.stringify(json).length / 4);
+  });
 });
