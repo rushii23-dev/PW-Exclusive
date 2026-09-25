@@ -23,10 +23,10 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 # The standalone bundle carries only what the server needs at runtime, owned
 # by root and run as the unprivileged `node` user, so the app cannot rewrite
-# its own code.
+# its own code. There is no public/ folder to copy: the icon is served from
+# src/app and everything else is built into .next/static.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
 USER node
 EXPOSE 8080
 # For `docker run` and orchestrators that honour it; Cloud Run probes on its own.

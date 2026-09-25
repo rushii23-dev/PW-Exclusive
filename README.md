@@ -56,21 +56,24 @@ Every use case in the brief, and a few beyond it:
 - **Honest about gaps.** "The document doesn't say" is a first-class answer, and the UI only claims Gemini checked for contradictions when that check actually completed.
 - **Never breaks.** If a Gemini model is overloaded, the next model in a fallback chain answers within a fixed time budget; if Gemini is unavailable or wrong, every feature falls back to the rule engine. With no API key at all, analysis, Q&A, options and comparison still work.
 - **Prompt-fenced.** Untrusted text sits inside tags like `<document>`; any fence tag *inside* the document, question or situation is defused first, so a contract that says `</document> SYSTEM: …` cannot step outside its fence. Quotes still verify.
+- **Safety filters set, not assumed.** Every call states its safety settings — harassment, hate speech, sexual and dangerous content blocked from medium probability up — instead of relying on per-model defaults. A blocked reply falls back to the rule engine like any other failure.
 - **Private.** Documents are processed in memory and never stored or logged. No accounts, no analytics on content.
 
 ## Security
 
 | Threat | Defence |
 |---|---|
-| Rate-limit evasion by spoofing `X-Forwarded-For` | The client is the address *our* proxy appended (rightmost hop, `TRUSTED_PROXY_HOPS` for more), never what the client claimed; the limiter's table has a hard size ceiling |
+| Rate-limit evasion by spoofing `X-Forwarded-For` | The client is the address *our* proxy appended (rightmost hop, `TRUSTED_PROXY_HOPS` for more), never what the client claimed |
+| Flooding the limiter from rotating addresses | The limiter's table has a hard ceiling; when it fills, expired clients go first, then a tenth of the table at once, so a flood costs amortised constant time per request instead of a full sweep for each |
 | Memory exhaustion via huge or endless bodies | Bodies are read as a stream and abandoned the moment they pass a byte cap — with or without a `Content-Length`; caps are sized in UTF-8 bytes so an Indic-script document gets the same room as English |
+| Files built to exhaust the server | A Word file is a ZIP whose size fields can lie, so every XML part the parser will read is actually inflated — off the main thread, against a 48 MB budget — before the parser opens it: a decompression bomb is stopped at the budget instead of unpacked in full. PDFs are read page by page, never past 300 pages |
 | Other websites spending this server's Gemini quota through visitors' browsers | JSON-only API (a cross-site form can't send it) and `Sec-Fetch-Site` checks refuse cross-site requests |
 | Disguised uploads (a binary renamed `.pdf`/`.jpg`/`.txt`) | File signatures are checked before any parser or model sees the bytes; the image type sent to Gemini comes from the bytes, not the name |
 | Prompt injection from the document | Untrusted-data rule in every system prompt, fence-tag defusing, structured JSON output validated by zod, and every quote verified against the document |
-| Leaking the API key to the browser | Gemini, HTTP and upload modules are marked `server-only`: a client bundle that imports them fails to build |
-| Clickjacking, sniffing, cross-origin leaks | Strict CSP (`connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`), `X-Frame-Options: DENY`, `nosniff`, COOP/CORP same-origin, HSTS, a locked-down `Permissions-Policy`, no `X-Powered-By` — all pinned by a regression test |
-| Error messages echoing document text | Every failure maps to a fixed, generic message; document text is never logged |
-| Compression side channels (BREACH) | Compressed API responses never carry a secret (no token, cookie or key), so a length attack has nothing to recover |
+| Harmful model output | Safety settings on every Gemini call block harassment, hate speech, sexual and dangerous content from medium probability up; a blocked reply is replaced by the rule engine's |
+| Leaking the API key or deployment details | Gemini, HTTP and upload modules are marked `server-only`: a client bundle that imports them fails to build. `/api/health` says only whether Gemini is configured — never the key, the model or the fallback chain |
+| Clickjacking, sniffing, cross-origin leaks | A same-origin Content-Security-Policy (`default-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`), `X-Frame-Options: DENY`, `nosniff`, COOP/CORP same-origin, HSTS, a locked-down `Permissions-Policy`, no `X-Powered-By` — all pinned by a regression test |
+| Error messages echoing document text | Every failure maps to a fixed, generic message in one JSON shape — unknown `/api` paths included; document text is never logged |
 
 ## Accessibility
 
@@ -85,14 +88,15 @@ Built to WCAG 2.2 AA, and tested for it:
 
 ## Efficiency
 
-- **API responses are compressed.** Next.js compresses pages but not API responses, and an analysis is about ten times the size of its document: every clause with its flags, explanations and quotes. Responses go out brotli-compressed (gzip as the fallback), on the thread pool so a large one never stalls other requests. The sample lease's analysis shrinks from 29 KB to 5 KB. Longer documents save more, because flag explanations repeat from clause to clause: the maximum-size test contract's 1.1 MB goes out as 27 KB. This matters most for readers on mobile data.
-- **Nothing is fetched twice.** An explanation, answer, set of options, analysis or comparison the reader has already had is shown again from memory, with no request and no model call. That covers reopening a clause after filtering, switching back to a language, and picking a sample again. Only complete results are kept, so a Gemini step that fell through is retried. Answers belong to one document, live in memory only, and are never written to storage.
-- **The analysis code stays on the server.** The browser gets the engine's types, limits and display helpers through a single entry point, never the risk lexicon, glossary or tokenizer. That cut the gzipped JavaScript for the analyze and compare pages by 7% and 12%, and a test walks the import graph to keep it that way.
-- **Explaining a clause reads only that clause:** 15 ms instead of a full 150 ms analysis on a maximum-size contract. The results are identical, which a test checks clause by clause on every sample.
-- **The engine analyses a 200,000-character contract in about 150 ms.** Glossary matchers compile once; sentences and amounts are split once per analysis, not once per check; and syllables are counted once per distinct word (a long contract has ~30,000 words but only ~1,400 distinct ones). A test keeps the maximum-size case inside its budget.
-- **No wasted model calls.** A request the reader abandons, or that a newer one replaces, is cancelled in the browser, and the server tries no fallback model for it.
-- **Every request has a deadline**, so no spinner can run forever.
-- **Typing never re-renders the results:** the analysis view is memoised and off-screen clause cards skip layout (`content-visibility: auto`).
+- **Light pages.** Class names are joined by `clsx` alone — no runtime class-merging library — which takes 8 KB of gzipped JavaScript off every page. The six sample contracts are their own script, fetched only when a sample is picked, and the analysis engine never reaches the browser at all: pages get its types, limits and display helpers through one entry point, and a test walks the import graph to keep both that way. The monospace face is preloaded nowhere and fetched only where contract text is shown.
+- **Gzipped API responses, with no compression code.** Next.js compresses pages but sends route-handler bodies raw; declaring every `/api` response as JSON in the header config is what lets its gzip reach them. The sample lease's analysis goes out as 5 KB instead of 29 KB.
+- **Follow-ups read only what they need.** A question or a described situation is answered from the clauses alone, skipping the document-wide passes (readability, contradiction checks, summary) — about a quarter less work than a full analysis. Explaining one clause reads only that clause: under 20 ms instead of a full analysis's 150+ on a maximum-size contract. Tests check both against the full analysis of every sample.
+- **Nothing is fetched twice.** An explanation, answer, set of options, analysis or comparison the reader has already had is shown again from memory, with no request and no model call — reopening a clause after filtering, switching back to a language, picking a sample again. Only complete results are kept, so a Gemini step that fell through is retried. The caches are small, least-recently-used first, keyed by a SHA-256 digest of the document rather than the document itself, and never written to storage.
+- **Tabs are built when opened.** The analysis view renders only the tab in front of the reader; the rest are built the first time they are opened and then kept, so a half-typed question survives a look elsewhere.
+- **Long PDFs stop early.** A PDF is read one page at a time, and reading stops once there is more text than an analysis takes: the rest of a long file is never parsed.
+- **The engine analyses a 200,000-character contract in about 150 ms.** Glossary matchers compile once; sentences and amounts are split once per analysis, not once per check; syllables are counted once per distinct word (a long contract has ~30,000 words but only ~1,400 distinct ones). A test keeps the maximum-size case inside its budget.
+- **No wasted model calls.** A request the reader abandons, or that a newer one replaces, is cancelled in the browser, and the server tries no fallback model for it. Every request has a deadline, so no spinner can run forever.
+- **Typing never re-renders the results:** the analysis view and every clause card are memoised, and off-screen cards skip layout (`content-visibility: auto`).
 
 ---
 
@@ -119,17 +123,17 @@ Open http://localhost:3000. Get a free Gemini key at [Google AI Studio](https://
 
 ```bash
 npm run check          # lint + typecheck + all tests
-npm test               # 371 tests
+npm test               # 406 tests
 npm run test:coverage  # with coverage floors (CI fails below them)
 ```
 
 | Suite | What it proves |
 |---|---|
-| `tests/engine` | Segmentation, classification, extraction, both sides' duties, contradictions, retrieval, comparison — and the maximum-size performance budget |
-| `tests/ai` | Grounding and fallbacks against a stand-in for the Gemini SDK: invented quotes, clauses that don't exist, malformed JSON, timeouts, cancellation, and prompt-fence break-out attempts — none of it reaches the reader |
-| `tests/api` | Every route, plus the guards: spoofed `X-Forwarded-For`, endless streamed bodies, wrong content types, cross-site requests, disguised uploads, security headers, and response compression |
-| `tests/components` | Every page and panel rendered in jsdom and audited with axe; keyboard behaviour, focus management, `lang`/`dir` on AI text, cancellation of superseded requests, and the colour-contrast arithmetic |
-| `tests/client` | Request deadlines, cancellation and error handling in the browser; answers kept per document and never refetched; the import graph that keeps the engine out of the browser |
+| `tests/engine` | Segmentation, classification, extraction, both sides' duties, contradictions, retrieval, comparison; clause-only and single-clause reads checked against the full analysis — and the maximum-size performance budget |
+| `tests/ai` | Grounding and fallbacks against a stand-in for the Gemini SDK: invented quotes, clauses that don't exist, malformed JSON, timeouts, cancellation, withheld replies, safety settings on every call, and prompt-fence break-out attempts — none of it reaches the reader |
+| `tests/api` | Every route, plus the guards: spoofed `X-Forwarded-For`, a flood of new addresses, endless streamed bodies, wrong content types, cross-site requests, disguised uploads, decompression bombs that lie about their size, page-heavy PDFs, JSON 404s and the security headers |
+| `tests/components` | Every page and panel rendered in jsdom and audited with axe; keyboard behaviour, focus management, tabs built on first open, `lang`/`dir` on AI text, cancellation of superseded requests, and the colour-contrast arithmetic |
+| `tests/client` | Request deadlines, cancellation and error handling in the browser; answers kept per document and never refetched; digest cache keys; the import graph that keeps the engine and the sample texts out of the browser |
 
 The AI tests need no key. Coverage is above 90% of statements and lines; GitHub Actions runs lint, types, tests with coverage floors, a production-dependency audit and a production build on every push.
 
@@ -158,7 +162,7 @@ gcloud run deploy clearclause --source . --region asia-south1 \
 | `POST /api/extract` | Text from PDF, Word, image or text uploads (≤ 4 MB) |
 | `GET /api/health` | Liveness and whether Gemini is configured (never the key) |
 
-JSON routes accept only `application/json` bodies (415 otherwise) and refuse cross-site browser requests (403). The AI routes (`analyze`, `ask`, `explain`, `options`, `compare`) accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
+JSON routes accept only `application/json` bodies (415 otherwise) and refuse cross-site browser requests (403). Every response, errors included, is JSON in one shape — `{ "error": { "code", "message" } }` for failures — and an unknown `/api` path gets a JSON 404. The AI routes (`analyze`, `ask`, `explain`, `options`, `compare`) accept an optional `language` code (`en`, `hi`, `mr`, `bn`, `ta`, `te`, `kn`, `gu`, `ml`, `pa`, `ur`, `es`).
 
 ## Tech
 
