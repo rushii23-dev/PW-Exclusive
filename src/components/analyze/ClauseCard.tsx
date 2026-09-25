@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { ClauseExplainer } from "@/components/analyze/ClauseExplainer";
 import { RiskBadge } from "@/components/RiskBadge";
-import { CATEGORY_LABELS, type Clause } from "@/lib/engine";
+import { CATEGORY_LABELS, type Clause } from "@/lib/engine/client";
 import { cn } from "@/lib/utils";
 
 const PREVIEW_CHARS = 420;
