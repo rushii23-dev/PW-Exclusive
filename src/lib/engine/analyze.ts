@@ -16,11 +16,12 @@ import { findInconsistencies } from "./inconsistencies";
 import { extractObligations } from "./obligations";
 import { computeReadability } from "./readability";
 import { byLevelDesc } from "./risk";
-import { segment } from "./segment";
+import { segment, type RawClause } from "./segment";
 import { composeSummary, detectDocumentType } from "./summarize";
 import type {
   Analysis,
   Clause,
+  DocumentType,
   ExtractedEntity,
   RiskFinding,
   RiskProfile,
@@ -80,29 +81,32 @@ function withinBounds(text: string): string {
   return trimmed;
 }
 
+/**
+ * Everything the engine knows about one clause. The kind of document decides
+ * whose duties are whose (a "client" is the reader of a subscription but the
+ * other side of a freelance contract).
+ */
+function readClause(raw: RawClause, index: number, type: DocumentType): Clause {
+  const scope = `${raw.heading ?? ""}\n${raw.text}`;
+  const { categories, risk, findings } = classifyClause(scope);
+  return {
+    id: `clause-${index + 1}`,
+    index,
+    heading: raw.heading,
+    text: raw.text,
+    categories: categories.length > 0 ? categories : ["general"],
+    risk,
+    findings,
+    entities: extractEntities(raw.text),
+    jargon: findJargon(scope),
+    obligations: extractObligations(raw.text, type),
+  };
+}
+
 export function analyzeDocument(text: string): Analysis {
   const trimmed = withinBounds(text);
-  const rawClauses = segment(trimmed);
-  // The kind of document decides whose duties are whose (a "client" is the
-  // reader of a subscription but the other side of a freelance contract).
   const { type, label } = detectDocumentType(trimmed);
-
-  const clauses: Clause[] = rawClauses.map((raw, index) => {
-    const scope = `${raw.heading ?? ""}\n${raw.text}`;
-    const { categories, risk, findings } = classifyClause(scope);
-    return {
-      id: `clause-${index + 1}`,
-      index,
-      heading: raw.heading,
-      text: raw.text,
-      categories: categories.length > 0 ? categories : ["general"],
-      risk,
-      findings,
-      entities: extractEntities(raw.text),
-      jargon: findJargon(scope),
-      obligations: extractObligations(raw.text, type),
-    };
-  });
+  const clauses = segment(trimmed).map((raw, index) => readClause(raw, index, type));
 
   const riskProfile: RiskProfile = {
     high: clauses.filter((c) => c.risk === "high").length,
