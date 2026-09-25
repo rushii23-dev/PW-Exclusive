@@ -8,6 +8,7 @@
  */
 
 export {
+  analyzeClause,
   analyzeDocument,
   DocumentTooLargeError,
   DocumentTooSmallError,
