@@ -1,8 +1,10 @@
 /**
  * Public surface of the analysis engine.
  *
- * Everything is deterministic, dependency-free TypeScript. UI code and API
- * routes import from here, never from the internals directly.
+ * Everything is deterministic, dependency-free TypeScript. API routes and
+ * server components import from here, never from the internals directly.
+ * Client components import from `./client` instead: the analysis runs on the
+ * server, so the browser needs only the engine's types and display helpers.
  */
 
 export {
