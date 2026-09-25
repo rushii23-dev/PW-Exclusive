@@ -5,7 +5,6 @@
  * in plain language. Stateless: both documents stay in memory only.
  */
 
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateCompareVerdict } from "@/lib/ai/compare";
@@ -13,7 +12,7 @@ import { isAiConfigured } from "@/lib/ai/gemini";
 import { compare } from "@/lib/engine";
 import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { bodyLimit, guardRequest, parseBody } from "@/lib/server/http";
+import { bodyLimit, guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
     ? await generateCompareVerdict(a.analysis, b.analysis, comparison, body.data.language, request.signal)
     : null;
 
-  return NextResponse.json({
+  return jsonResponse(request, {
     a: a.analysis,
     b: b.analysis,
     comparison,
