@@ -72,11 +72,16 @@ function dedupeEntities(clauses: Clause[]): ExtractedEntity[] {
   return out;
 }
 
-export function analyzeDocument(text: string): Analysis {
+/** The document, trimmed, once it is known to be within bounds. */
+function withinBounds(text: string): string {
   const trimmed = text.trim();
   if (trimmed.length > MAX_DOCUMENT_CHARS) throw new DocumentTooLargeError();
   if (trimmed.length < MIN_DOCUMENT_CHARS) throw new DocumentTooSmallError();
+  return trimmed;
+}
 
+export function analyzeDocument(text: string): Analysis {
+  const trimmed = withinBounds(text);
   const rawClauses = segment(trimmed);
   // The kind of document decides whose duties are whose (a "client" is the
   // reader of a subscription but the other side of a freelance contract).
