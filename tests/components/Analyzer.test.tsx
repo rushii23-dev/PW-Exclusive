@@ -141,6 +141,23 @@ describe("Analyzer", () => {
     expect(screen.getByRole("button", { name: "Analyze document" })).toBeInTheDocument();
   });
 
+  it("asks again when Gemini's part of an analysis fell through", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({
+      "/api/health": health,
+      "/api/analyze": (body) =>
+        json({
+          analysis: analyzeDocument((body as { text: string }).text),
+          ai: { available: true, used: true, brief: null, contradictionsChecked: false },
+        }),
+    });
+    render(<Analyzer initialSample={null} />);
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+    await screen.findByRole("heading", { level: 2, name: "Rental agreement" });
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/analyze")).toHaveLength(2));
+  });
+
   it("sends other files to the server to be read, and says how they were read", async () => {
     const user = userEvent.setup();
     const { calls } = mockApi({
