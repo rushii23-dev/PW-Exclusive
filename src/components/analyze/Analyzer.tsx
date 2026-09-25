@@ -10,6 +10,7 @@ import { AnalysisView } from "@/components/analyze/AnalysisView";
 import type { AiBrief } from "@/lib/ai/brief";
 import { languageName, type LanguageCode } from "@/lib/ai/languages";
 import { postForm, postJson, type ApiResult } from "@/lib/client/api";
+import { ResponseCache } from "@/lib/client/cache";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
 import { formatCount, type Analysis } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS, MAX_UPLOAD_BYTES } from "@/lib/limits";
@@ -38,6 +39,14 @@ function describeExtraction(name: string, x: Extraction): string {
       ? `Gemini read the text from ${name}${pages}. Check it against the original before analysing — photos and scans can be misread.`
       : `Read the text from ${name}${pages}. Review it, then analyse.`;
   return x.truncated ? `${base} The file was longer than one analysis allows, so only the first part is shown.` : base;
+}
+
+/**
+ * Worth keeping only once Gemini's part is complete: an analysis whose brief
+ * or contradiction read fell through is worth asking for again.
+ */
+function isComplete({ ai }: AnalyzeResponse): boolean {
+  return !ai.used || (ai.brief !== null && ai.contradictionsChecked);
 }
 
 /** One sentence a screen reader can announce when results arrive. */
@@ -77,6 +86,9 @@ export function Analyzer({
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
   const nextAnalyzeSignal = useLatestRequest();
   const nextUploadSignal = useLatestRequest();
+  // The same sample clicked twice, or a switch back to a language already
+  // read in, shows the finished analysis again instead of re-running Gemini.
+  const [analyses] = useState(() => new ResponseCache<AnalyzeResponse>(4));
 
   /** Put a finished analysis — or its failure — on the page. */
   const showResult = useCallback(
@@ -102,13 +114,20 @@ export function Analyzer({
 
   /** Ask for an analysis; the page changes only once the answer arrives. */
   const request = useCallback(
-    (trimmed: string, language: LanguageCode) =>
+    (trimmed: string, language: LanguageCode) => {
       // A newer request (another sample, a language change) cancels any
-      // analysis still in flight rather than racing it.
-      postJson<AnalyzeResponse>("/api/analyze", { text: trimmed, language }, { signal: nextAnalyzeSignal() }).then(
-        (response) => showResult(response, trimmed, language),
-      ),
-    [nextAnalyzeSignal, showResult],
+      // analysis still in flight rather than racing it — even one answered
+      // from memory, which would otherwise be overwritten when it lands.
+      const signal = nextAnalyzeSignal();
+      return analyses
+        .load(
+          JSON.stringify([language, trimmed]),
+          () => postJson<AnalyzeResponse>("/api/analyze", { text: trimmed, language }, { signal }),
+          isComplete,
+        )
+        .then((response) => showResult(response, trimmed, language));
+    },
+    [analyses, nextAnalyzeSignal, showResult],
   );
 
   const analyze = useCallback(
