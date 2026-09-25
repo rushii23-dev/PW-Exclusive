@@ -100,6 +100,22 @@ describe("Analyzer", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Rental agreement" })).toBeNull();
   });
 
+  it("shows an analysis it already has without asking for it again", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({ "/api/health": health, "/api/analyze": (body) => analyzed((body as { text: string }).text) });
+    render(<Analyzer initialSample={null} />);
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+    await screen.findByRole("heading", { level: 2, name: "Rental agreement" });
+    await user.click(screen.getByRole("button", { name: "Mutual NDA" }));
+    await screen.findByRole("heading", { level: 2, name: "Non-disclosure agreement" });
+
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+    const heading = await screen.findByRole("heading", { level: 2, name: "Rental agreement" });
+    // Answered from memory, it still lands the reader on the result.
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(calls.filter((c) => c.url === "/api/analyze")).toHaveLength(2);
+  });
+
   it("sends other files to the server to be read, and says how they were read", async () => {
     const user = userEvent.setup();
     const { calls } = mockApi({
