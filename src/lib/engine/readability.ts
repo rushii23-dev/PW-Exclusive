@@ -16,8 +16,18 @@ export function computeReadability(text: string): Readability {
   const wordCount = words.length;
   const sentenceCount = Math.max(1, sentences.length);
 
+  // Contracts repeat their vocabulary: a long one runs to tens of thousands
+  // of words but only a thousand or two distinct ones. Count each once.
+  const syllablesIn = new Map<string, number>();
   let syllables = 0;
-  for (const w of words) syllables += countSyllables(w);
+  for (const w of words) {
+    let n = syllablesIn.get(w);
+    if (n === undefined) {
+      n = countSyllables(w);
+      syllablesIn.set(w, n);
+    }
+    syllables += n;
+  }
 
   const wordsPerSentence = wordCount / sentenceCount;
   const syllablesPerWord = wordCount > 0 ? syllables / wordCount : 0;
