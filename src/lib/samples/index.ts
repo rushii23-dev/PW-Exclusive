@@ -5,10 +5,15 @@
  * lexicon, so a first-time visitor sees the full analysis without having to
  * find a contract of their own — and the tests can assert that known flags
  * in known places are found.
+ *
+ * Client components list the samples from `./catalog` and load a text only
+ * when one is picked; this module is what that load fetches.
  */
 
+import { SAMPLE_CATALOG, type SampleId } from "./catalog";
+
 export interface SampleDocument {
-  id: string;
+  id: SampleId;
   title: string;
   description: string;
   text: string;
@@ -227,44 +232,17 @@ The courts at Pune shall have exclusive jurisdiction over any dispute arising fr
 9. DISPUTES
 Any claim by the Guest shall be heard only by the courts of Mumbai.`;
 
-export const SAMPLES: SampleDocument[] = [
-  {
-    id: "rental",
-    title: "Rental agreement",
-    description: "An 11-month lease with an auto-renewal trap, a one-sided termination clause and a deposit that can vanish.",
-    text: RENTAL_AGREEMENT,
-  },
-  {
-    id: "employment",
-    title: "Employment contract",
-    description: "An offer with a training bond, a 24-month non-compete and arbitration run by the employer.",
-    text: EMPLOYMENT_CONTRACT,
-  },
-  {
-    id: "nda",
-    title: "Mutual NDA",
-    description: "A fairly standard non-disclosure agreement — useful to see what a reasonable document looks like.",
-    text: NDA,
-  },
-  {
-    id: "freelance",
-    title: "Freelance contract",
-    description: "A design gig where payment depends on the client's approval and revisions are unlimited.",
-    text: FREELANCE_AGREEMENT,
-  },
-  {
-    id: "tos",
-    title: "Subscription terms",
-    description: "A fitness app's terms: auto-renewal, unilateral changes, your data shared, your content licensed forever.",
-    text: SUBSCRIPTION_TOS,
-  },
-  {
-    id: "pg",
-    title: "PG licence (has errors)",
-    description: "A paying-guest agreement that contradicts itself: two deposit amounts, mismatched numbers, two courts and a missing clause.",
-    text: PG_LICENCE,
-  },
-];
+/** Each sample's text by id: what `loadSampleText` hands the browser. */
+export const SAMPLE_TEXTS: Record<SampleId, string> = {
+  rental: RENTAL_AGREEMENT,
+  employment: EMPLOYMENT_CONTRACT,
+  nda: NDA,
+  freelance: FREELANCE_AGREEMENT,
+  tos: SUBSCRIPTION_TOS,
+  pg: PG_LICENCE,
+};
+
+export const SAMPLES: SampleDocument[] = SAMPLE_CATALOG.map((info) => ({ ...info, text: SAMPLE_TEXTS[info.id] }));
 
 export function getSample(id: string): SampleDocument | undefined {
   return SAMPLES.find((s) => s.id === id);

@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeClause,
   analyzeDocument,
+  dedupeFindings,
   DocumentTooLargeError,
   DocumentTooSmallError,
   MAX_DOCUMENT_CHARS,
+  readClauses,
 } from "@/lib/engine/analyze";
 import { toPlainText } from "@/lib/engine/checklist";
 import {
@@ -218,6 +220,29 @@ describe("analyzeClause", () => {
   it("enforces the same bounds as a full analysis", () => {
     expect(() => analyzeClause("hello", "clause-1")).toThrow(DocumentTooSmallError);
     expect(() => analyzeClause("a ".repeat(MAX_DOCUMENT_CHARS), "clause-1")).toThrow(DocumentTooLargeError);
+  });
+});
+
+describe("readClauses", () => {
+  it("reads every sample's type and clauses exactly as the full analysis does", () => {
+    for (const sample of SAMPLES) {
+      const { documentType, documentTypeLabel, clauses } = analyzeDocument(sample.text);
+      expect(readClauses(sample.text)).toEqual({ documentType, documentTypeLabel, clauses });
+    }
+  });
+
+  it("enforces the same bounds as a full analysis", () => {
+    expect(() => readClauses("hello")).toThrow(DocumentTooSmallError);
+    expect(() => readClauses("a ".repeat(MAX_DOCUMENT_CHARS))).toThrow(DocumentTooLargeError);
+  });
+});
+
+describe("dedupeFindings", () => {
+  it("is the analysis's own finding list: one per rule, worst first", () => {
+    for (const sample of SAMPLES) {
+      const analysis = analyzeDocument(sample.text);
+      expect(dedupeFindings(analysis.clauses)).toEqual(analysis.findings);
+    }
   });
 });
 

@@ -13,10 +13,11 @@ import type { CompareVerdict } from "@/lib/ai/compare";
 import type { LanguageCode } from "@/lib/ai/languages";
 import { postJson } from "@/lib/client/api";
 import { ResponseCache } from "@/lib/client/cache";
+import { digest } from "@/lib/client/digest";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
 import { formatCount, type Analysis, type Comparison } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS } from "@/lib/limits";
-import { SAMPLES } from "@/lib/samples";
+import { loadSampleText, SAMPLE_CATALOG, type SampleId } from "@/lib/samples/catalog";
 import { cn } from "@/lib/utils";
 
 interface CompareResponse {
@@ -55,14 +56,14 @@ function DocumentInput({
           className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs"
           value=""
           onChange={(e) => {
-            const sample = SAMPLES.find((s) => s.id === e.target.value);
-            if (sample) onChange(sample.text);
+            // The texts are fetched on first use; a failed fetch leaves the box as it was.
+            loadSampleText(e.target.value as SampleId).then(onChange, () => {});
           }}
         >
           <option value="" disabled>
             Load a sample…
           </option>
-          {SAMPLES.map((s) => (
+          {SAMPLE_CATALOG.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title}
             </option>
@@ -114,12 +115,13 @@ export function Comparer() {
     const a = textA.trim();
     const b = textB.trim();
     const signal = nextSignal();
+    const [keyA, keyB] = await Promise.all([digest(a), digest(b)]);
     const res = await comparisons.load(
-      JSON.stringify([asked, a, b]),
+      `${asked}:${keyA}:${keyB}`,
       () => postJson<CompareResponse>("/api/compare", { textA: a, textB: b, language: asked }, { signal }),
       isComplete,
     );
-    if (!res.ok && res.aborted) return;
+    if (signal.aborted) return;
     setPending(false);
     if (!res.ok) {
       setError(res.error);

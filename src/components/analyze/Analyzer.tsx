@@ -11,10 +11,12 @@ import type { AiBrief } from "@/lib/ai/brief";
 import { languageName, type LanguageCode } from "@/lib/ai/languages";
 import { postForm, postJson, type ApiResult } from "@/lib/client/api";
 import { ResponseCache } from "@/lib/client/cache";
+import { digest } from "@/lib/client/digest";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
 import { formatCount, type Analysis } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS, MAX_UPLOAD_BYTES } from "@/lib/limits";
-import { SAMPLES, type SampleDocument } from "@/lib/samples";
+import type { SampleDocument } from "@/lib/samples";
+import { loadSampleText, SAMPLE_CATALOG, type SampleId } from "@/lib/samples/catalog";
 import type { Extraction } from "@/lib/server/extract";
 import { cn } from "@/lib/utils";
 
@@ -116,16 +118,21 @@ export function Analyzer({
   const request = useCallback(
     (trimmed: string, language: LanguageCode) => {
       // A newer request (another sample, a language change) cancels any
-      // analysis still in flight rather than racing it — even one answered
-      // from memory, which would otherwise be overwritten when it lands.
+      // analysis still in flight rather than racing it.
       const signal = nextAnalyzeSignal();
-      return analyses
-        .load(
-          JSON.stringify([language, trimmed]),
-          () => postJson<AnalyzeResponse>("/api/analyze", { text: trimmed, language }, { signal }),
-          isComplete,
+      return digest(trimmed)
+        .then((key) =>
+          analyses.load(
+            `${language}:${key}`,
+            () => postJson<AnalyzeResponse>("/api/analyze", { text: trimmed, language }, { signal }),
+            isComplete,
+          ),
         )
-        .then((response) => showResult(response, trimmed, language));
+        .then((response) => {
+          // Superseded on the way — even an answer from memory must not
+          // overwrite the newer request's result.
+          if (!signal.aborted) showResult(response, trimmed, language);
+        });
     },
     [analyses, nextAnalyzeSignal, showResult],
   );
@@ -153,6 +160,19 @@ export function Analyzer({
   useEffect(() => {
     if (initialSample) runInitialSample(initialSample);
   }, [initialSample]);
+
+  /** Put a sample in the box and analyse it; its text is fetched on first use. */
+  async function pickSample(id: SampleId) {
+    let sampleText: string;
+    try {
+      sampleText = await loadSampleText(id);
+    } catch {
+      setError("Could not load that sample. Check your connection and try again.");
+      return;
+    }
+    setText(sampleText);
+    analyze(sampleText);
+  }
 
   async function onFileChosen(file: File | undefined) {
     if (!file || reading) return;
@@ -236,8 +256,8 @@ export function Analyzer({
           rows={12}
           placeholder="Paste a lease, contract, offer letter or terms of service here — or drop a PDF, Word file or photo…"
           className={cn(
-            "mt-3 w-full resize-y rounded-xl border border-border bg-background p-4 font-mono text-[13px] leading-relaxed shadow-inner transition-colors placeholder:font-sans placeholder:text-muted-foreground",
-            dragging && "border-primary bg-primary-soft/40",
+            "mt-3 w-full resize-y rounded-xl border p-4 font-mono text-[13px] leading-relaxed shadow-inner transition-colors placeholder:font-sans placeholder:text-muted-foreground",
+            dragging ? "border-primary bg-primary-soft/40" : "border-border bg-background",
           )}
         />
         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
@@ -311,15 +331,11 @@ export function Analyzer({
             Or try a sample
           </h3>
           <ul aria-labelledby="samples-heading" className="mt-2.5 flex flex-wrap gap-2">
-            {SAMPLES.map((sample) => (
+            {SAMPLE_CATALOG.map((sample) => (
               <li key={sample.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setText(sample.text);
-                    setError(null);
-                    void analyze(sample.text);
-                  }}
+                  onClick={() => void pickSample(sample.id)}
                   aria-describedby={`sample-${sample.id}-description`}
                   className={cn(
                     "min-h-8 rounded-full border border-border bg-background px-3.5 py-1.5 text-xs font-medium",

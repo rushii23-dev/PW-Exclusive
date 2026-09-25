@@ -3,6 +3,10 @@
 /**
  * Accessible tabs implementing the WAI-ARIA tabs pattern: roving tabindex,
  * arrow-key navigation, Home/End, aria-selected, and labelled panels.
+ *
+ * A panel is rendered the first time it is opened and kept from then on:
+ * tabs the reader never opens cost nothing, and one they leave keeps its
+ * state (a half-typed question, a filter) for when they come back.
  */
 
 import { useId, useRef, useState, type ReactNode } from "react";
@@ -28,8 +32,14 @@ export function Tabs({
   className?: string;
 }) {
   const [active, setActive] = useState(tabs[0]?.id);
+  const [opened, setOpened] = useState(() => new Set([tabs[0]?.id]));
   const baseId = useId();
   const listRef = useRef<HTMLDivElement>(null);
+
+  function select(id: string) {
+    setActive(id);
+    setOpened((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }
 
   function onKeyDown(event: React.KeyboardEvent) {
     const index = tabs.findIndex((t) => t.id === active);
@@ -40,7 +50,7 @@ export function Tabs({
     else if (event.key === "End") next = tabs.length - 1;
     if (next === -1) return;
     event.preventDefault();
-    setActive(tabs[next].id);
+    select(tabs[next].id);
     const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>("[role=tab]");
     buttons?.[next]?.focus();
   }
@@ -65,7 +75,7 @@ export function Tabs({
               aria-selected={selected}
               aria-controls={`${baseId}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
-              onClick={() => setActive(tab.id)}
+              onClick={() => select(tab.id)}
               className={cn(
                 "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
                 selected
@@ -104,7 +114,7 @@ export function Tabs({
           tabIndex={0}
           className="mt-5 focus-visible:outline-none"
         >
-          {tab.content}
+          {opened.has(tab.id) && tab.content}
         </div>
       ))}
     </div>

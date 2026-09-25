@@ -12,7 +12,7 @@ import { getSample, NDA, RENTAL_AGREEMENT } from "@/lib/samples";
 import { expectNoA11yViolations } from "./a11y";
 import { hang, json, mockApi } from "./helpers";
 
-const health = () => json({ status: "ok", ai: { provider: "gemini", configured: false, model: null } });
+const health = () => json({ status: "ok", ai: { provider: "gemini", configured: false } });
 
 /** What /api/analyze returns for a document, computed by the real engine. */
 function analyzed(text: string) {
@@ -209,7 +209,7 @@ describe("Analyzer", () => {
       clear: () => store.clear(),
     });
     mockApi({
-      "/api/health": () => json({ ai: { configured: true, model: "gemini-test" } }),
+      "/api/health": () => json({ ai: { configured: true } }),
       "/api/analyze": (body) => {
         const { text } = body as { text: string };
         return json({

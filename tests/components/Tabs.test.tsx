@@ -61,4 +61,27 @@ describe("Tabs", () => {
     expect(screen.getByText("First panel")).toBeVisible();
     expect(screen.getByText("Third panel")).not.toBeVisible();
   });
+
+  it("renders a panel only once it is opened, then keeps it and its state", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tabs
+        label="Analysis details"
+        tabs={[
+          { id: "one", label: "Clauses", content: <p>First panel</p> },
+          { id: "two", label: "Ask", content: <input aria-label="Question" /> },
+        ]}
+      />,
+    );
+    expect(screen.queryByRole("textbox", { hidden: true })).not.toBeInTheDocument();
+    // Its panel is there, empty, so the tab's aria-controls still resolves.
+    const askTab = screen.getByRole("tab", { name: "Ask" });
+    expect(document.getElementById(askTab.getAttribute("aria-controls")!)).toBeEmptyDOMElement();
+
+    await user.click(askTab);
+    await user.type(screen.getByRole("textbox", { name: "Question" }), "Can I leave early?");
+    await user.click(screen.getByRole("tab", { name: "Clauses" }));
+    await user.click(askTab);
+    expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("Can I leave early?");
+  });
 });

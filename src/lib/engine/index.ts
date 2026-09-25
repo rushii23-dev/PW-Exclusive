@@ -10,17 +10,20 @@
 export {
   analyzeClause,
   analyzeDocument,
+  dedupeFindings,
   DocumentTooLargeError,
   DocumentTooSmallError,
   MAX_DOCUMENT_CHARS,
   MIN_DOCUMENT_CHARS,
+  readClauses,
 } from "./analyze";
+export type { ClauseReading } from "./analyze";
 export { compare } from "./compare";
 export type { CategoryRow, Comparison, FindingDiff, NumberDiff } from "./compare";
 export { answerQuestion, bestQuote, ClauseIndex } from "./retrieve";
 export type { RetrievalHit } from "./retrieve";
 export { findInconsistencies } from "./inconsistencies";
-export { toPlainText } from "./checklist";
+export { buildChecklist, buildLawyerQuestions, toPlainText } from "./checklist";
 export { formatCount } from "./format";
 export { CATEGORY_LABELS } from "./categories";
 export { GLOSSARY } from "./glossary";

@@ -25,6 +25,9 @@ const mono = JetBrains_Mono({
   variable: "--font-mono-stack",
   subsets: ["latin"],
   display: "swap",
+  // Only the document boxes and quotes use it, so no page preloads it; the
+  // browser fetches it where monospace text actually appears.
+  preload: false,
 });
 
 export const metadata: Metadata = {

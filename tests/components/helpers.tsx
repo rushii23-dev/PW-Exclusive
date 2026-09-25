@@ -19,7 +19,7 @@ export function renderWithAi(
 ) {
   return render(
     <AiProvider
-      status={{ configured, model: configured ? "gemini-test" : null }}
+      status={{ configured }}
       language={language}
       setLanguage={() => {}}
       documentText={documentText}

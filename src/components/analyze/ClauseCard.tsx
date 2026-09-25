@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Lightbulb, Quote } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { ClauseExplainer } from "@/components/analyze/ClauseExplainer";
 import { RiskBadge } from "@/components/RiskBadge";
@@ -10,7 +10,11 @@ import { cn } from "@/lib/utils";
 
 const PREVIEW_CHARS = 420;
 
-export function ClauseCard({ clause }: { clause: Clause }) {
+/**
+ * Memoised: changing the risk filter re-renders the list, and a long
+ * contract has hundreds of cards whose clause has not changed.
+ */
+export const ClauseCard = memo(function ClauseCard({ clause }: { clause: Clause }) {
   const [expanded, setExpanded] = useState(false);
   const needsExpand = clause.text.length > PREVIEW_CHARS;
   const shown =
@@ -121,4 +125,4 @@ export function ClauseCard({ clause }: { clause: Clause }) {
       <ClauseExplainer clauseId={clause.id} />
     </article>
   );
-}
+});

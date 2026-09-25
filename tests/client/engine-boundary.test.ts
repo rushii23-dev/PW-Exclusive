@@ -93,6 +93,16 @@ describe("the engine/browser boundary", () => {
     expect(modules).toEqual(["bounds", "categories", "checklist", "client", "format"]);
   });
 
+  it("client code lists the samples from their catalog and never bundles the texts", () => {
+    const offenders: string[] = [];
+    for (const file of clientFiles()) {
+      for (const { from, runtime } of importsOf(file)) {
+        if (runtime && from === "@/lib/samples") offenders.push(path.relative(SRC, file));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("reads imports the way the compiler does", () => {
     // A guard that misreads imports guards nothing; pin the parser down.
     const sample = path.join(SRC, "lib", "engine", "client.ts");

@@ -49,7 +49,8 @@ export class DocumentTooSmallError extends Error {
   }
 }
 
-function dedupeFindings(clauses: Clause[]): RiskFinding[] {
+/** Every distinct finding across the clauses, one per rule, worst first. */
+export function dedupeFindings(clauses: Clause[]): RiskFinding[] {
   const byRule = new Map<string, RiskFinding>();
   for (const clause of clauses) {
     for (const f of clause.findings) {
@@ -124,20 +125,41 @@ export function analyzeClause(
   return { documentTypeLabel: label, clause: readClause(raw, n - 1, type) };
 }
 
+/** A document's type and its clauses: everything a question is answered from. */
+export type ClauseReading = Pick<Analysis, "documentType" | "documentTypeLabel" | "clauses">;
+
+function readTrimmed(trimmed: string): ClauseReading {
+  const { type, label } = detectDocumentType(trimmed);
+  return {
+    documentType: type,
+    documentTypeLabel: label,
+    clauses: segment(trimmed).map((raw, index) => readClause(raw, index, type)),
+  };
+}
+
+/**
+ * Every clause, exactly as `analyzeDocument` reports it, without the
+ * document-wide passes a question never looks at: readability, the
+ * contradiction checks, the summary and the aggregate lists. Follow-up
+ * questions about a document are answered from this.
+ */
+export function readClauses(text: string): ClauseReading {
+  return readTrimmed(withinBounds(text));
+}
+
+/** How many clauses sit at each level, and the worst level present — in one pass. */
+function profileRisk(clauses: Clause[]): RiskProfile {
+  const counts = { high: 0, medium: 0, low: 0 };
+  for (const { risk } of clauses) if (risk) counts[risk]++;
+  const overall = counts.high > 0 ? "high" : counts.medium > 0 ? "medium" : counts.low > 0 ? "low" : null;
+  return { ...counts, overall };
+}
+
 export function analyzeDocument(text: string): Analysis {
   const trimmed = withinBounds(text);
-  const { type, label } = detectDocumentType(trimmed);
-  const clauses = segment(trimmed).map((raw, index) => readClause(raw, index, type));
+  const { documentType: type, documentTypeLabel: label, clauses } = readTrimmed(trimmed);
 
-  const riskProfile: RiskProfile = {
-    high: clauses.filter((c) => c.risk === "high").length,
-    medium: clauses.filter((c) => c.risk === "medium").length,
-    low: clauses.filter((c) => c.risk === "low").length,
-    overall: null,
-  };
-  riskProfile.overall =
-    riskProfile.high > 0 ? "high" : riskProfile.medium > 0 ? "medium" : riskProfile.low > 0 ? "low" : null;
-
+  const riskProfile = profileRisk(clauses);
   const readability = computeReadability(trimmed);
   const findings = dedupeFindings(clauses);
   const keyFacts = dedupeEntities(clauses);

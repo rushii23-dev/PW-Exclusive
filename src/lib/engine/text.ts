@@ -10,7 +10,7 @@ const WORD_RE = /[a-z0-9]+(?:'[a-z]+)?/gi;
 
 /** Lowercased word tokens. Numbers survive; punctuation does not. */
 export function tokenize(text: string): string[] {
-  return (text.toLowerCase().match(WORD_RE) ?? []).slice();
+  return text.toLowerCase().match(WORD_RE) ?? [];
 }
 
 /**

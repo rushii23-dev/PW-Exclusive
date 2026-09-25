@@ -24,7 +24,6 @@ import { DocumentSession } from "@/lib/client/session";
 export interface AiStatus {
   /** Null until the health check answers. */
   configured: boolean | null;
-  model: string | null;
 }
 
 interface AiContextValue extends AiStatus {
@@ -40,16 +39,16 @@ const LANGUAGE_KEY = "clearclause:language";
 
 /** Ask the server once whether Gemini is available. */
 export function useAiStatus(): AiStatus {
-  const [status, setStatus] = useState<AiStatus>({ configured: null, model: null });
+  const [status, setStatus] = useState<AiStatus>({ configured: null });
   useEffect(() => {
     let cancelled = false;
     fetch("/api/health")
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
-        setStatus({ configured: Boolean(json?.ai?.configured), model: json?.ai?.model ?? null });
+        setStatus({ configured: Boolean(json?.ai?.configured) });
       })
-      .catch(() => !cancelled && setStatus({ configured: false, model: null }));
+      .catch(() => !cancelled && setStatus({ configured: false }));
     return () => {
       cancelled = true;
     };
@@ -102,11 +101,11 @@ export function AiProvider({
   // A stable value, so typing in the document box doesn't re-render every
   // clause card that reads this context. A new document gets a new session,
   // so no answer about one document is ever shown for another.
-  const { configured, model } = status;
+  const { configured } = status;
   const session = useMemo(() => new DocumentSession(documentText, Boolean(configured)), [documentText, configured]);
   const value = useMemo<AiContextValue>(
-    () => ({ configured, model, language, setLanguage, session }),
-    [configured, model, language, setLanguage, session],
+    () => ({ configured, language, setLanguage, session }),
+    [configured, language, setLanguage, session],
   );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }
