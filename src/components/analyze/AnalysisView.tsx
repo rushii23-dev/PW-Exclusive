@@ -25,7 +25,7 @@ import { Tabs } from "@/components/Tabs";
 import type { AiBrief } from "@/lib/ai/brief";
 import type { LanguageCode } from "@/lib/ai/languages";
 import { downloadText, useCopy } from "@/lib/client/hooks";
-import { formatCount, toPlainText, type Analysis, type Obligation, type RiskLevel } from "@/lib/engine";
+import { formatCount, toPlainText, type Analysis, type Obligation, type RiskLevel } from "@/lib/engine/client";
 import { cn } from "@/lib/utils";
 
 const ENTITY_ICON = {
