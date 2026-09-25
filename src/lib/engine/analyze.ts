@@ -6,6 +6,7 @@
  * engine unit-testable and the output auditable.
  */
 
+import { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "./bounds";
 import { buildChecklist, buildLawyerQuestions } from "./checklist";
 import { classifyClause } from "./classify";
 import { extractEntities } from "./entities";
@@ -25,9 +26,8 @@ import type {
   RiskProfile,
 } from "./types";
 
-/** Bounds enforced by the API too; duplicated here so the engine is safe alone. */
-export const MAX_DOCUMENT_CHARS = 200_000;
-export const MIN_DOCUMENT_CHARS = 80;
+/** Bounds enforced by the API too; enforced here as well so the engine is safe alone. */
+export { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS };
 
 /** Enough duties per side to be useful without burying the list. */
 const MAX_OBLIGATIONS = 12;
