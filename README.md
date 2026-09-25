@@ -84,6 +84,8 @@ Built to WCAG 2.2 AA, and tested for it:
 
 ## Efficiency
 
+- **API responses are compressed.** Next.js compresses pages but not API responses, and an analysis is about ten times the size of its document: every clause with its flags, explanations and quotes. Responses go out brotli-compressed (gzip as the fallback), on the thread pool so a large one never stalls other requests. The sample lease's analysis shrinks from 29 KB to 5 KB. Longer documents save more, because flag explanations repeat from clause to clause: the maximum-size test contract's 1.1 MB goes out as 27 KB. This matters most for readers on mobile data.
+- **Nothing is fetched twice.** An explanation, answer, set of options, analysis or comparison the reader has already had is shown again from memory, with no request and no model call. That covers reopening a clause after filtering, switching back to a language, and picking a sample again. Only complete results are kept, so a Gemini step that fell through is retried. Answers belong to one document, live in memory only, and are never written to storage.
 - **The engine analyses a 200,000-character contract in about 190 ms** (down from 330 ms): glossary matchers compile once, and sentences and amounts are split once per analysis, not once per check. A test keeps the maximum-size case inside its budget.
 - **No wasted model calls.** A request the reader abandons, or that a newer one replaces, is cancelled in the browser, and the server tries no fallback model for it.
 - **Every request has a deadline**, so no spinner can run forever.
