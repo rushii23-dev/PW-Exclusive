@@ -11,7 +11,7 @@ import type { AiBrief } from "@/lib/ai/brief";
 import { languageName, type LanguageCode } from "@/lib/ai/languages";
 import { postForm, postJson, type ApiResult } from "@/lib/client/api";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
-import { formatCount, type Analysis } from "@/lib/engine";
+import { formatCount, type Analysis } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS, MAX_UPLOAD_BYTES } from "@/lib/limits";
 import { SAMPLES, type SampleDocument } from "@/lib/samples";
 import type { Extraction } from "@/lib/server/extract";
