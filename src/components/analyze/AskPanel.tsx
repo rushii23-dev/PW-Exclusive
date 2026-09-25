@@ -2,9 +2,11 @@
 
 /**
  * Document Q&A. Stateless by design: each question re-sends the document,
- * so the server holds nothing between requests. Gemini answers in the
- * reader's language; every quote it shows has been checked against the
- * document, and "the document doesn't say" is a first-class answer.
+ * so the server holds nothing between requests — and a question already
+ * answered is answered again from memory, without a request at all. Gemini
+ * answers in the reader's language; every quote it shows has been checked
+ * against the document, and "the document doesn't say" is a first-class
+ * answer.
  */
 
 import { CornerDownLeft, MessageCircleQuestion } from "lucide-react";
@@ -13,7 +15,6 @@ import { useRef, useState } from "react";
 import { useAi } from "@/components/ai/AiContext";
 import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
 import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
-import { postJson } from "@/lib/client/api";
 import { prefersReducedMotion, useLatestRequest } from "@/lib/client/hooks";
 import type { Answer } from "@/lib/engine/client";
 import { QUESTION_MAX_CHARS, QUESTION_MIN_CHARS } from "@/lib/limits";
@@ -37,7 +38,7 @@ const CHIP =
   "min-h-8 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground";
 
 export function AskPanel() {
-  const { documentText, language, configured } = useAi();
+  const { session, language, configured } = useAi();
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState(false);
@@ -56,11 +57,7 @@ export function AskPanel() {
     const asked = language;
     setExchanges((prev) => [...prev, { question: trimmed, language: asked, answer: null }]);
 
-    const result = await postJson<{ answer: Answer }>(
-      "/api/ask",
-      { text: documentText, question: trimmed, language: asked },
-      { signal: nextSignal() },
-    );
+    const result = await session.ask(trimmed, asked, nextSignal());
     if (!result.ok && result.aborted) return;
     setExchanges((prev) => {
       const next = [...prev];
