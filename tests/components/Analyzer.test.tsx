@@ -116,6 +116,31 @@ describe("Analyzer", () => {
     expect(calls.filter((c) => c.url === "/api/analyze")).toHaveLength(2);
   });
 
+  it("cancels a slower analysis when one it already has is chosen instead", async () => {
+    const user = userEvent.setup();
+    const signals: AbortSignal[] = [];
+    mockApi({
+      "/api/health": health,
+      "/api/analyze": (body, init) => {
+        const text = (body as { text: string }).text;
+        if (text.startsWith("RESIDENTIAL")) return analyzed(text);
+        signals.push(init.signal!);
+        return hang(init);
+      },
+    });
+    render(<Analyzer initialSample={null} />);
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+    await screen.findByRole("heading", { level: 2, name: "Rental agreement" });
+
+    await user.click(screen.getByRole("button", { name: "Mutual NDA" }));
+    await user.click(screen.getByRole("button", { name: "Rental agreement" }));
+
+    // Left running, the NDA would land later and replace what the reader chose.
+    await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    expect(screen.getByRole("heading", { level: 2, name: "Rental agreement" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze document" })).toBeInTheDocument();
+  });
+
   it("sends other files to the server to be read, and says how they were read", async () => {
     const user = userEvent.setup();
     const { calls } = mockApi({
