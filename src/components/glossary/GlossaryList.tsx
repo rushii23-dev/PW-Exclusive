@@ -3,7 +3,7 @@
 import { SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { GlossaryEntry } from "@/lib/engine";
+import type { GlossaryEntry } from "@/lib/engine/client";
 
 export function GlossaryList({ entries }: { entries: GlossaryEntry[] }) {
   const [query, setQuery] = useState("");

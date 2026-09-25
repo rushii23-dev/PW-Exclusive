@@ -1,4 +1,4 @@
-import type { RiskProfile } from "@/lib/engine";
+import type { RiskProfile } from "@/lib/engine/client";
 
 /**
  * The document's risk profile as a proportional bar plus counts.
