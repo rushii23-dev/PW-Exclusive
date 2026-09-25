@@ -119,7 +119,7 @@ Open http://localhost:3000. Get a free Gemini key at [Google AI Studio](https://
 
 ```bash
 npm run check          # lint + typecheck + all tests
-npm test               # 344 tests
+npm test               # 371 tests
 npm run test:coverage  # with coverage floors (CI fails below them)
 ```
 
@@ -127,9 +127,9 @@ npm run test:coverage  # with coverage floors (CI fails below them)
 |---|---|
 | `tests/engine` | Segmentation, classification, extraction, both sides' duties, contradictions, retrieval, comparison — and the maximum-size performance budget |
 | `tests/ai` | Grounding and fallbacks against a stand-in for the Gemini SDK: invented quotes, clauses that don't exist, malformed JSON, timeouts, cancellation, and prompt-fence break-out attempts — none of it reaches the reader |
-| `tests/api` | Every route, plus the guards: spoofed `X-Forwarded-For`, endless streamed bodies, wrong content types, cross-site requests, disguised uploads, security headers |
+| `tests/api` | Every route, plus the guards: spoofed `X-Forwarded-For`, endless streamed bodies, wrong content types, cross-site requests, disguised uploads, security headers, and response compression |
 | `tests/components` | Every page and panel rendered in jsdom and audited with axe; keyboard behaviour, focus management, `lang`/`dir` on AI text, cancellation of superseded requests, and the colour-contrast arithmetic |
-| `tests/client` | Request deadlines, cancellation and error handling in the browser |
+| `tests/client` | Request deadlines, cancellation and error handling in the browser; answers kept per document and never refetched; the import graph that keeps the engine out of the browser |
 
 The AI tests need no key. Coverage is above 90% of statements and lines; GitHub Actions runs lint, types, tests with coverage floors, a production-dependency audit and a production build on every push.
 
