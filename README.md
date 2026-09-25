@@ -70,6 +70,7 @@ Every use case in the brief, and a few beyond it:
 | Leaking the API key to the browser | Gemini, HTTP and upload modules are marked `server-only`: a client bundle that imports them fails to build |
 | Clickjacking, sniffing, cross-origin leaks | Strict CSP (`connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`), `X-Frame-Options: DENY`, `nosniff`, COOP/CORP same-origin, HSTS, a locked-down `Permissions-Policy`, no `X-Powered-By` — all pinned by a regression test |
 | Error messages echoing document text | Every failure maps to a fixed, generic message; document text is never logged |
+| Compression side channels (BREACH) | Compressed API responses never carry a secret (no token, cookie or key), so a length attack has nothing to recover |
 
 ## Accessibility
 
