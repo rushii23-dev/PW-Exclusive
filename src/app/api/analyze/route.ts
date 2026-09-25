@@ -7,6 +7,7 @@
  * never stored or logged.
  */
 
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateAiBrief } from "@/lib/ai/brief";
@@ -14,7 +15,7 @@ import { aiContradictions } from "@/lib/ai/contradictions";
 import { isAiConfigured } from "@/lib/ai/gemini";
 import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
+import { guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       ])
     : [null, null];
 
-  return jsonResponse(request, {
+  return NextResponse.json({
     analysis: {
       ...analysis,
       inconsistencies: [...analysis.inconsistencies, ...(contradictions ?? [])],

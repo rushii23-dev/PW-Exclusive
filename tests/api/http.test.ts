@@ -1,5 +1,3 @@
-import { brotliDecompressSync, gunzipSync } from "node:zlib";
-
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -7,9 +5,10 @@ import { POST as analyzePost } from "@/app/api/analyze/route";
 import { POST as comparePost } from "@/app/api/compare/route";
 import { MAX_DOCUMENT_CHARS } from "@/lib/engine";
 import { NDA, RENTAL_AGREEMENT } from "@/lib/samples";
-import { bodyLimit, clientKey, guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
+import { bodyLimit, clientKey, guardRequest, parseBody } from "@/lib/server/http";
 import {
   checkRateLimit,
+  EVICTION_BATCH,
   MAX_TRACKED_CLIENTS,
   resetRateLimits,
   trackedClientCount,
@@ -79,6 +78,29 @@ describe("rate-limit table", () => {
     // The newest client is still remembered and still limited.
     for (let i = 0; i < 4; i++) checkRateLimit(`flood-${MAX_TRACKED_CLIENTS + 49}`, 5, now);
     expect(checkRateLimit(`flood-${MAX_TRACKED_CLIENTS + 49}`, 5, now).allowed).toBe(false);
+    // The oldest were the ones forgotten.
+    for (let i = 0; i < 5; i++) expect(checkRateLimit("flood-0", 5, now).allowed).toBe(true);
+  });
+
+  it("frees a batch of room at once, so a flood does not rescan the table per request", () => {
+    const now = 1_000_000;
+    for (let i = 0; i < MAX_TRACKED_CLIENTS; i++) checkRateLimit(`flood-${i}`, 5, now);
+    expect(trackedClientCount()).toBe(MAX_TRACKED_CLIENTS);
+    checkRateLimit("one-more", 5, now);
+    expect(trackedClientCount()).toBe(MAX_TRACKED_CLIENTS - EVICTION_BATCH + 1);
+    // The next thousand newcomers find room without another sweep.
+    for (let i = 0; i < EVICTION_BATCH - 1; i++) checkRateLimit(`late-${i}`, 5, now);
+    expect(trackedClientCount()).toBe(MAX_TRACKED_CLIENTS);
+  });
+
+  it("forgets expired clients before any live one", () => {
+    const start = 1_000_000;
+    for (let i = 0; i < MAX_TRACKED_CLIENTS - 1; i++) checkRateLimit(`idle-${i}`, 5, start);
+    checkRateLimit("active", 5, start + 59_000);
+    // A minute on, every idle window has expired; the active one has not.
+    checkRateLimit("newcomer", 5, start + 61_000);
+    expect(trackedClientCount()).toBe(2);
+    expect(checkRateLimit("active", 1, start + 61_000).allowed).toBe(false);
   });
 });
 
@@ -176,68 +198,5 @@ describe("routes refuse bodies that are not JSON", () => {
       req({ "content-type": "application/json" }, JSON.stringify({ textA: RENTAL_AGREEMENT, textB: NDA, ai: false })),
     );
     expect(res.status).toBe(200);
-  });
-});
-
-describe("jsonResponse", () => {
-  /** Large, repetitive, JSON-shaped — like an analysis. */
-  const body = { clauses: Array.from({ length: 200 }, (_, i) => ({ id: `clause-${i + 1}`, text: RENTAL_AGREEMENT })) };
-  const raw = JSON.stringify(body);
-
-  const accepting = (encoding: string) => req({ "accept-encoding": encoding });
-
-  async function bytes(res: Response): Promise<Buffer> {
-    return Buffer.from(await res.arrayBuffer());
-  }
-
-  it("prefers brotli, and the body decompresses to exactly the JSON", async () => {
-    const res = await jsonResponse(accepting("gzip, deflate, br, zstd"), body);
-    expect(res.headers.get("content-encoding")).toBe("br");
-    expect(res.headers.get("content-type")).toBe("application/json");
-    expect(res.headers.get("vary")).toBe("accept-encoding");
-    const compressed = await bytes(res);
-    expect(brotliDecompressSync(compressed).toString()).toBe(raw);
-    // Repeated clause text is exactly what a long window folds away.
-    expect(compressed.byteLength).toBeLessThan(raw.length / 50);
-  });
-
-  it("falls back to gzip when that is all the client takes", async () => {
-    const res = await jsonResponse(accepting("gzip"), body);
-    expect(res.headers.get("content-encoding")).toBe("gzip");
-    expect(gunzipSync(await bytes(res)).toString()).toBe(raw);
-  });
-
-  it("respects a coding the client refuses with q=0", async () => {
-    const res = await jsonResponse(accepting("br;q=0, gzip;q=0.8"), body);
-    expect(res.headers.get("content-encoding")).toBe("gzip");
-  });
-
-  it("sends plain JSON when the client accepts no compression", async () => {
-    for (const encoding of ["", "identity", "deflate", "br;q=0"]) {
-      const res = await jsonResponse(accepting(encoding), body);
-      expect(res.headers.get("content-encoding")).toBeNull();
-      expect(await res.json()).toEqual(body);
-    }
-  });
-
-  it("leaves small bodies alone, where compression would cost more than it saves", async () => {
-    const res = await jsonResponse(accepting("br, gzip"), { answer: 42 });
-    expect(res.headers.get("content-encoding")).toBeNull();
-    expect(await res.json()).toEqual({ answer: 42 });
-  });
-
-  it("compresses a real analysis end to end", async () => {
-    const res = await analyzePost(
-      req(
-        { "content-type": "application/json", "accept-encoding": "br" },
-        JSON.stringify({ text: RENTAL_AGREEMENT, ai: false }),
-      ),
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("content-encoding")).toBe("br");
-    const compressed = await bytes(res);
-    const json = JSON.parse(brotliDecompressSync(compressed).toString());
-    expect(json.analysis.documentType).toBe("rental-agreement");
-    expect(compressed.byteLength).toBeLessThan(JSON.stringify(json).length / 4);
   });
 });

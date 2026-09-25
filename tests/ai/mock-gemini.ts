@@ -8,7 +8,12 @@ import { vi } from "vitest";
 export interface CapturedRequest {
   model: string;
   contents: string;
-  config: { systemInstruction?: string; responseJsonSchema?: unknown; responseMimeType?: string };
+  config: {
+    systemInstruction?: string;
+    responseJsonSchema?: unknown;
+    responseMimeType?: string;
+    safetySettings?: Array<{ category?: string; threshold?: string }>;
+  };
 }
 
 export const gemini = {
@@ -32,7 +37,9 @@ export const generateContent = vi.fn(async (req: CapturedRequest) => {
   return { text: typeof next === "string" ? next : JSON.stringify(next), candidates: [] };
 });
 
-vi.mock("@google/genai", () => ({
+// Only the client is replaced; the SDK's enums and types stay real.
+vi.mock("@google/genai", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@google/genai")>()),
   GoogleGenAI: class {
     models = { generateContent };
   },

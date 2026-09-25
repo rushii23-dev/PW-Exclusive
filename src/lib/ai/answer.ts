@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 
-import { answerQuestion, type Analysis, type Answer, ClauseIndex } from "@/lib/engine";
+import { answerQuestion, type Answer, ClauseIndex, type ClauseReading } from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
 import { fenceUntrusted, formatClauses, selectContext, verifyCitations } from "./grounding";
@@ -60,19 +60,19 @@ const schema = {
 };
 
 export async function aiAnswer(
-  analysis: Analysis,
+  doc: ClauseReading,
   question: string,
   language: LanguageCode,
-  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  index: ClauseIndex = new ClauseIndex(doc.clauses),
   signal?: AbortSignal,
 ): Promise<Answer | null> {
-  const { clauses } = selectContext(analysis.clauses, index, question);
+  const { clauses } = selectContext(doc.clauses, index, question);
 
   const ai = await generateJson({
     feature: "ask",
     system: `${baseRules(language)}
 
-Your task: answer the reader's question about their ${analysis.documentTypeLabel.toLowerCase()} using only the clauses provided. If the clauses do not answer it, set answerable to false — do not guess, and do not fill the gap with general law presented as if it were in the document.`,
+Your task: answer the reader's question about their ${doc.documentTypeLabel.toLowerCase()} using only the clauses provided. If the clauses do not answer it, set answerable to false — do not guess, and do not fill the gap with general law presented as if it were in the document.`,
     prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<question>\n${fenceUntrusted(question)}\n</question>`,
     schema,
     validate: reply,
@@ -91,7 +91,7 @@ Your task: answer the reader's question about their ${analysis.documentTypeLabel
     };
   }
 
-  const verified = verifyCitations(result.citations, analysis.clauses);
+  const verified = verifyCitations(result.citations, doc.clauses);
   // No verified source, no answer: an unsupported claim about a contract is
   // worse than no claim.
   if (verified.length === 0 || !result.answer.trim()) return null;
@@ -107,9 +107,9 @@ Your task: answer the reader's question about their ${analysis.documentTypeLabel
 
 /** Engine answer, marked as such — the fallback when Gemini is unavailable. */
 export function engineAnswer(
-  analysis: Analysis,
+  doc: ClauseReading,
   question: string,
-  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  index: ClauseIndex = new ClauseIndex(doc.clauses),
 ): Answer {
   return { ...answerQuestion(index, question), source: "engine" };
 }

@@ -10,6 +10,7 @@
  * of the analysis, so there is no reason to compute it.
  */
 
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { explainClause } from "@/lib/ai/explain";
@@ -17,7 +18,7 @@ import { isAiConfigured } from "@/lib/ai/gemini";
 import { analyzeClause } from "@/lib/engine";
 import { runEngine } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { errorResponse, guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
+import { errorResponse, guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -53,5 +54,5 @@ export async function POST(request: Request) {
   if (!explanation) {
     return errorResponse(502, "ai_failed", "The AI could not explain this clause right now. Please try again.");
   }
-  return jsonResponse(request, { explanation });
+  return NextResponse.json({ explanation });
 }

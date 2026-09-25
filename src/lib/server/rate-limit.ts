@@ -3,8 +3,9 @@
  *
  * Suitable for a single-instance deployment, which is what this app is; a
  * multi-instance deployment would move the window into Redis with the same
- * interface. The map self-prunes on each call, so an abandoned IP costs
- * nothing after its window slides past.
+ * interface. Each client keeps at most `limitPerMinute` timestamps, and the
+ * table is swept whenever it fills, so an abandoned address costs nothing
+ * once its window has passed.
  */
 
 import "server-only";
@@ -22,7 +23,30 @@ const WINDOW_MS = 60_000;
  */
 export const MAX_TRACKED_CLIENTS = 10_000;
 
+/**
+ * How many clients a full table forgets at once. Freeing a tenth of it
+ * means the sweep runs once per thousand new clients, not on every request
+ * of a flood — amortised, each request costs a constant amount.
+ */
+export const EVICTION_BATCH = MAX_TRACKED_CLIENTS / 10;
+
 const buckets = new Map<string, Window>();
+
+/**
+ * Make room in a full table: drop every client whose window has expired,
+ * then, if live clients still fill it, the least recently seen. A Map
+ * iterates in insertion order and every hit re-inserts its key, so the
+ * first keys are the stalest.
+ */
+function makeRoom(cutoff: number): void {
+  for (const [k, w] of buckets) {
+    if (w.timestamps.length === 0 || w.timestamps[w.timestamps.length - 1] <= cutoff) buckets.delete(k);
+  }
+  for (const k of buckets.keys()) {
+    if (buckets.size <= MAX_TRACKED_CLIENTS - EVICTION_BATCH) break;
+    buckets.delete(k);
+  }
+}
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -38,26 +62,13 @@ export function checkRateLimit(
 ): RateLimitResult {
   const cutoff = now - WINDOW_MS;
 
-  // Prune the whole table occasionally so idle keys don't accumulate.
-  if (buckets.size >= MAX_TRACKED_CLIENTS) {
-    for (const [k, w] of buckets) {
-      if (w.timestamps.length === 0 || w.timestamps[w.timestamps.length - 1] < cutoff) {
-        buckets.delete(k);
-      }
-    }
-    // Still full of live clients: evict the least recently seen. A Map
-    // iterates in insertion order and every hit re-inserts its key below,
-    // so the first keys are the stalest.
-    for (const k of buckets.keys()) {
-      if (buckets.size < MAX_TRACKED_CLIENTS) break;
-      buckets.delete(k);
-    }
-  }
-
   let bucket = buckets.get(key);
   if (bucket) {
+    // Re-inserted below, so the Map stays in least-recently-seen order.
     buckets.delete(key);
   } else {
+    // Only a new client can overfill the table.
+    if (buckets.size >= MAX_TRACKED_CLIENTS) makeRoom(cutoff);
     bucket = { timestamps: [] };
   }
   buckets.set(key, bucket);

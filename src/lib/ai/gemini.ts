@@ -12,7 +12,7 @@
 // rather than ever include it.
 import "server-only";
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, HarmBlockThreshold, HarmCategory, type SafetySetting } from "@google/genai";
 import type { ZodType } from "zod";
 
 import { languageName, type LanguageCode } from "./languages";
@@ -25,6 +25,19 @@ import { languageName, type LanguageCode } from "./languages";
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 /** Tried in order when the primary model is overloaded or unavailable. */
 const DEFAULT_FALLBACKS = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash"];
+
+/**
+ * Stated on every call rather than left to each model's defaults, which
+ * differ between models and have changed over time: harmful content is
+ * blocked from medium probability up. A blocked reply arrives empty and is
+ * handled like any other failure — the rule engine answers instead.
+ */
+export const SAFETY_SETTINGS: SafetySetting[] = [
+  HarmCategory.HARM_CATEGORY_HARASSMENT,
+  HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+  HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+  HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+].map((category) => ({ category, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE }));
 
 /** One attempt may not take longer than this… */
 const ATTEMPT_TIMEOUT_MS = 20_000;
@@ -41,7 +54,7 @@ export function isAiConfigured(): boolean {
   return Boolean(apiKey());
 }
 
-export function geminiModel(): string {
+function geminiModel(): string {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 }
 
@@ -180,6 +193,7 @@ export async function generateJson<T>(
         maxOutputTokens: 8192,
         responseMimeType: "application/json",
         responseJsonSchema: req.schema,
+        safetySettings: SAFETY_SETTINGS,
         // Retries are decided above, where the time budget is known.
         httpOptions: { timeout, retryOptions: { attempts: 1 } },
         abortSignal: req.signal,
@@ -245,6 +259,7 @@ export async function transcribeDocument(file: {
       config: {
         temperature: 0,
         maxOutputTokens: 32_768,
+        safetySettings: SAFETY_SETTINGS,
         httpOptions: { timeout, retryOptions: { attempts: 1 } },
         abortSignal: file.signal,
       },

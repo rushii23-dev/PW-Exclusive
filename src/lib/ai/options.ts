@@ -10,7 +10,14 @@
 
 import { z } from "zod";
 
-import { bestQuote, ClauseIndex, type Analysis } from "@/lib/engine";
+import {
+  bestQuote,
+  buildChecklist,
+  buildLawyerQuestions,
+  ClauseIndex,
+  dedupeFindings,
+  type ClauseReading,
+} from "@/lib/engine";
 
 import { baseRules, generateJson } from "./gemini";
 import {
@@ -118,19 +125,19 @@ const schema = {
 };
 
 export async function aiSituationGuide(
-  analysis: Analysis,
+  doc: ClauseReading,
   situation: string,
   language: LanguageCode,
-  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  index: ClauseIndex = new ClauseIndex(doc.clauses),
   signal?: AbortSignal,
 ): Promise<SituationGuide | null> {
-  const { clauses } = selectContext(analysis.clauses, index, situation);
+  const { clauses } = selectContext(doc.clauses, index, situation);
 
   const ai = await generateJson({
     feature: "options",
     system: `${baseRules(language)}
 
-Your task: the reader has described their situation. Using only the clauses provided from their ${analysis.documentTypeLabel.toLowerCase()}, lay out the options the document gives them, what each costs, and sensible next steps. Be practical and even-handed; include the option of negotiating with the other party where it is realistic. If the document does not address the situation, say so and set covered to false.`,
+Your task: the reader has described their situation. Using only the clauses provided from their ${doc.documentTypeLabel.toLowerCase()}, lay out the options the document gives them, what each costs, and sensible next steps. Be practical and even-handed; include the option of negotiating with the other party where it is realistic. If the document does not address the situation, say so and set covered to false.`,
     prompt: `<document>\n${formatClauses(clauses)}\n</document>\n\n<situation>\n${fenceUntrusted(situation)}\n</situation>`,
     schema,
     validate: reply,
@@ -145,7 +152,7 @@ Your task: the reader has described their situation. Using only the clauses prov
       title: o.title.trim(),
       whatHappens: o.whatHappens.trim(),
       costsAndRisks: o.costsAndRisks.trim(),
-      support: verifyCitations(o.citations, analysis.clauses),
+      support: verifyCitations(o.citations, doc.clauses),
     }))
     // An option with no verified support in the document is the model talking,
     // not the document — it does not reach the reader.
@@ -169,9 +176,9 @@ Your task: the reader has described their situation. Using only the clauses prov
  * checklist steps and lawyer questions the engine derived from their flags.
  */
 export function engineSituationGuide(
-  analysis: Analysis,
+  doc: ClauseReading,
   situation: string,
-  index: ClauseIndex = new ClauseIndex(analysis.clauses),
+  index: ClauseIndex = new ClauseIndex(doc.clauses),
 ): SituationGuide {
   const hits = index.search(situation, 3).filter((h) => h.score >= 1);
   if (hits.length === 0) {
@@ -191,12 +198,14 @@ export function engineSituationGuide(
   }
 
   const labels = new Set(hits.flatMap((h) => h.clause.findings.map((f) => f.label)));
+  // The same checklist and questions a full analysis would list.
+  const findings = dedupeFindings(doc.clauses);
   // Two clauses flagged by the same rule would otherwise repeat the same text.
   const usedRules = new Set<string>();
   return {
     source: "engine",
     covered: true,
-    summary: `These are the parts of your ${analysis.documentTypeLabel.toLowerCase()} that deal with this. Read them closely — they set out what you can do and what it costs.`,
+    summary: `These are the parts of your ${doc.documentTypeLabel.toLowerCase()} that deal with this. Read them closely — they set out what you can do and what it costs.`,
     options: hits.map((h) => {
       const finding = h.clause.findings.find((f) => !usedRules.has(f.ruleId));
       if (finding) usedRules.add(finding.ruleId);
@@ -209,8 +218,11 @@ export function engineSituationGuide(
         ],
       };
     }),
-    nextSteps: analysis.checklist.filter((c) => labels.has(c.because)).map((c) => c.text).slice(0, 5),
-    questionsForProfessional: analysis.lawyerQuestions.slice(0, 3),
+    nextSteps: buildChecklist(findings)
+      .filter((c) => labels.has(c.because))
+      .map((c) => c.text)
+      .slice(0, 5),
+    questionsForProfessional: buildLawyerQuestions(findings).slice(0, 3),
     urgency: null,
   };
 }

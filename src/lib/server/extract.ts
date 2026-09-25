@@ -13,7 +13,27 @@ import "server-only";
 import { transcribeDocument, isAiConfigured } from "@/lib/ai/gemini";
 import { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "@/lib/engine";
 
+import { checkArchive, type ArchiveLimits } from "./zip-guard";
+
 export { MAX_UPLOAD_BYTES } from "@/lib/limits";
+
+/**
+ * A .docx is a ZIP of XML parts. The parser reads the XML; these bound what
+ * that may cost. A real contract's XML runs to a few megabytes — the budget
+ * is far above that and far below what a decompression bomb unpacks to.
+ */
+export const DOCX_LIMITS: ArchiveLimits = {
+  maxEntries: 2_000,
+  maxInflatedBytes: 48 * 1024 * 1024,
+  checks: (name) => /\.(?:xml|rels)$/i.test(name),
+};
+
+/**
+ * Pages read from a PDF's text layer, at most. Long before this, a real
+ * document has more text than one analysis takes; the cap stops a file of
+ * thousands of empty pages from being walked end to end.
+ */
+export const MAX_PDF_PAGES = 300;
 
 export type ExtractionMethod = "text" | "pdf-text" | "docx" | "gemini-vision";
 
@@ -100,17 +120,45 @@ export function tidy(text: string): string {
     .trim();
 }
 
-function finish(text: string, method: ExtractionMethod, pages?: number): Extraction {
+function finish(
+  text: string,
+  method: ExtractionMethod,
+  { pages, complete = true }: { pages?: number; complete?: boolean } = {},
+): Extraction {
   const clean = tidy(text);
-  const truncated = clean.length > MAX_DOCUMENT_CHARS;
-  return { text: truncated ? clean.slice(0, MAX_DOCUMENT_CHARS) : clean, method, truncated, pages };
+  const truncated = !complete || clean.length > MAX_DOCUMENT_CHARS;
+  return { text: clean.slice(0, MAX_DOCUMENT_CHARS), method, truncated, pages };
 }
 
-async function readPdfText(bytes: Uint8Array): Promise<{ text: string; pages: number }> {
-  const { extractText, getDocumentProxy } = await import("unpdf");
+interface PdfText {
+  text: string;
+  pages: number;
+  /** False when pages were left unread: there was already enough text, or the page cap was reached. */
+  complete: boolean;
+}
+
+/**
+ * The PDF's text layer, one page at a time, stopping as soon as there is
+ * more text than one analysis takes (or at MAX_PDF_PAGES). A long file
+ * costs no more to read than the pages that will actually be used.
+ */
+async function readPdfText(bytes: Uint8Array): Promise<PdfText> {
+  const { getDocumentProxy } = await import("unpdf");
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
-  const { totalPages, text } = await extractText(pdf, { mergePages: false });
-  return { text: text.join("\n\n"), pages: totalPages };
+  try {
+    const pages: string[] = [];
+    let chars = 0;
+    const last = Math.min(pdf.numPages, MAX_PDF_PAGES);
+    for (let n = 1; n <= last && chars <= MAX_DOCUMENT_CHARS; n++) {
+      const { items } = await (await pdf.getPage(n)).getTextContent();
+      const page = items.map((item) => ("str" in item ? item.str + (item.hasEOL ? "\n" : "") : "")).join("");
+      pages.push(page);
+      chars += tidy(page).length;
+    }
+    return { text: pages.join("\n\n"), pages: pdf.numPages, complete: pages.length === pdf.numPages };
+  } finally {
+    await pdf.loadingTask.destroy();
+  }
 }
 
 async function readDocxText(bytes: Uint8Array): Promise<string> {
@@ -175,10 +223,17 @@ export async function extractDocumentText(file: {
 
   if (kind === "docx") {
     if (!looksLikeZip(file.bytes)) throw mismatch();
-    let text: string;
-    try {
-      text = await readDocxText(file.bytes);
-    } catch {
+    // Measure what the archive really unpacks to before the parser does.
+    const archive = await checkArchive(file.bytes, DOCX_LIMITS);
+    if (archive === "too_large") {
+      throw new ExtractError(
+        413,
+        "archive_too_large",
+        "That Word file unpacks to far more than any document needs, so it wasn't opened.",
+      );
+    }
+    const text = archive === "ok" ? await readDocxText(file.bytes).catch(() => null) : null;
+    if (text === null) {
       throw new ExtractError(422, "unreadable_file", "That Word file couldn't be opened. Is it a .docx (not an older .doc)?");
     }
     if (tidy(text).length < MIN_DOCUMENT_CHARS) {
@@ -195,18 +250,18 @@ export async function extractDocumentText(file: {
 
   if (!looksLikePdf(file.bytes)) throw mismatch();
   // PDF: use the text layer when there is one; a scan has none.
-  let pdf: { text: string; pages: number } | null = null;
+  let pdf: PdfText | null = null;
   try {
     pdf = await readPdfText(file.bytes);
   } catch {
     // Damaged or encrypted — Gemini may still be able to read it.
   }
   if (pdf && tidy(pdf.text).length >= MIN_DOCUMENT_CHARS) {
-    return finish(pdf.text, "pdf-text", pdf.pages);
+    return finish(pdf.text, "pdf-text", { pages: pdf.pages, complete: pdf.complete });
   }
   return finish(
     await viaGemini(file.bytes, "application/pdf", "a scanned PDF", file.signal),
     "gemini-vision",
-    pdf?.pages,
+    { pages: pdf?.pages },
   );
 }

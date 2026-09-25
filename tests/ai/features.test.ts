@@ -9,7 +9,7 @@ import { aiContradictions } from "@/lib/ai/contradictions";
 import { explainClause } from "@/lib/ai/explain";
 import { resetGeminiClient } from "@/lib/ai/gemini";
 import { aiSituationGuide, engineSituationGuide } from "@/lib/ai/options";
-import { analyzeDocument, compare } from "@/lib/engine";
+import { analyzeDocument, compare, readClauses } from "@/lib/engine";
 import { EMPLOYMENT_CONTRACT, RENTAL_AGREEMENT } from "@/lib/samples";
 
 const rental = analyzeDocument(RENTAL_AGREEMENT);
@@ -161,6 +161,14 @@ describe("aiSituationGuide", () => {
     const guide = engineSituationGuide(rental, "zzqx blorf wibble");
     expect(guide.covered).toBe(false);
     expect(guide.nextSteps.length).toBeGreaterThan(0);
+  });
+
+  it("engine fallback needs only the clauses: the same guide, steps and questions as from a full analysis", () => {
+    const situation = "I want to terminate the lease and leave early";
+    const guide = engineSituationGuide(readClauses(RENTAL_AGREEMENT), situation);
+    expect(guide).toEqual(engineSituationGuide(rental, situation));
+    expect(guide.nextSteps.length).toBeGreaterThan(0);
+    expect(guide.questionsForProfessional).toEqual(rental.lawyerQuestions.slice(0, 3));
   });
 });
 

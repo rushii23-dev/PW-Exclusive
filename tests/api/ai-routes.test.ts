@@ -45,15 +45,20 @@ afterEach(() => {
 describe("GET /api/health", () => {
   it("reports Gemini as not configured without a key", async () => {
     const json = await (await healthGet()).json();
-    expect(json.ai).toEqual({ provider: "gemini", configured: false, model: null });
+    expect(json.ai).toEqual({ provider: "gemini", configured: false });
   });
 
-  it("reports the model, never the key, when configured", async () => {
+  it("says Gemini is configured, and nothing about the key or the model", async () => {
     withKey();
-    const json = await (await healthGet()).json();
-    expect(json.ai.configured).toBe(true);
-    expect(json.ai.model).toBeTruthy();
-    expect(JSON.stringify(json)).not.toContain("test-key");
+    process.env.GEMINI_MODEL = "private-model-name";
+    try {
+      const json = await (await healthGet()).json();
+      expect(json.ai).toEqual({ provider: "gemini", configured: true });
+      expect(JSON.stringify(json)).not.toContain("test-key");
+      expect(JSON.stringify(json)).not.toContain("private-model-name");
+    } finally {
+      delete process.env.GEMINI_MODEL;
+    }
   });
 });
 

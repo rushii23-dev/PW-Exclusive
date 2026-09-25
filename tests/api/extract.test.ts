@@ -1,12 +1,15 @@
-import JSZip from "jszip";
+import { deflateRawSync } from "node:zlib";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { generateContent } from "../ai/mock-gemini";
 
+import { makeDocx, makePdf, pdfWithPages, zipOf } from "./files";
+
 import { POST as extractPost } from "@/app/api/extract/route";
 import { resetGeminiClient } from "@/lib/ai/gemini";
 import { analyzeDocument } from "@/lib/engine";
-import { detectKind, sniffImage, tidy } from "@/lib/server/extract";
+import { detectKind, DOCX_LIMITS, MAX_PDF_PAGES, MAX_UPLOAD_BYTES, sniffImage, tidy } from "@/lib/server/extract";
 import { resetRateLimits } from "@/lib/server/rate-limit";
 
 const LINES = [
@@ -16,48 +19,6 @@ const LINES = [
   "2. RENT",
   "The Tenant shall pay a monthly rent of Rs. 32,000 on or before the 5th of each month.",
 ];
-
-/** A real, minimal PDF with one line of text per entry, offsets computed exactly. */
-function makePdf(lines: string[]): Uint8Array {
-  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const stream = ["BT", "/F1 11 Tf", "14 TL", "50 780 Td", ...lines.map((l) => `(${esc(l)}) Tj T*`), "ET"].join("\n");
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-  ];
-  let out = "%PDF-1.4\n";
-  const offsets: number[] = [];
-  objects.forEach((body, i) => {
-    offsets.push(out.length);
-    out += `${i + 1} 0 obj\n${body}\nendobj\n`;
-  });
-  const xref = out.length;
-  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  out += offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("");
-  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new TextEncoder().encode(out);
-}
-
-async function makeDocx(paragraphs: string[]): Promise<Uint8Array> {
-  const zip = new JSZip();
-  zip.file(
-    "[Content_Types].xml",
-    `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
-  );
-  zip.file(
-    "_rels/.rels",
-    `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,
-  );
-  const body = paragraphs.map((p) => `<w:p><w:r><w:t xml:space="preserve">${p}</w:t></w:r></w:p>`).join("");
-  zip.file(
-    "word/document.xml",
-    `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`,
-  );
-  return zip.generateAsync({ type: "uint8array" });
-}
 
 /** The first bytes of real image files — enough for the signature check. */
 const PNG_HEADER = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
@@ -277,4 +238,43 @@ describe("POST /api/extract — request guards", () => {
     expect(res.status).toBe(403);
     expect((await res.json()).error.code).toBe("cross_site_request");
   });
+});
+
+describe("POST /api/extract — files built to exhaust the server", () => {
+  const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+  it("refuses a Word file whose XML inflates past the budget, before the parser opens it", async () => {
+    // ~50 KB on the wire, 64 MB unpacked, and headers that claim 100 bytes.
+    const bomb = zipOf([
+      { name: "[Content_Types].xml", data: new TextEncoder().encode("<Types/>"), method: 0, declaredSize: 8 },
+      {
+        name: "word/document.xml",
+        data: new Uint8Array(deflateRawSync(Buffer.alloc(DOCX_LIMITS.maxInflatedBytes + 16 * 1024 * 1024, 0x20))),
+        method: 8,
+        declaredSize: 100,
+      },
+    ]);
+    expect(bomb.byteLength).toBeLessThan(MAX_UPLOAD_BYTES);
+    const res = await extractPost(upload(bomb, "offer.docx", DOCX));
+    expect(res.status).toBe(413);
+    expect((await res.json()).error.code).toBe("archive_too_large");
+  }, 30_000);
+
+  it("refuses a Word file that is not a well-formed archive", async () => {
+    const zipHeaderOnly = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+    const res = await extractPost(upload(zipHeaderOnly, "offer.docx", DOCX));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.code).toBe("unreadable_file");
+  });
+
+  it("reads no more than MAX_PDF_PAGES pages of a PDF, and says the text was cut short", async () => {
+    const pages = Array.from({ length: MAX_PDF_PAGES + 20 }, (_, i) => [`Clause ${i + 1}. The tenant pays rent.`]);
+    const res = await extractPost(upload(pdfWithPages(pages), "long.pdf", "application/pdf"));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.pages).toBe(MAX_PDF_PAGES + 20);
+    expect(json.truncated).toBe(true);
+    expect(json.text).toContain(`Clause ${MAX_PDF_PAGES}.`);
+    expect(json.text).not.toContain(`Clause ${MAX_PDF_PAGES + 1}.`);
+  }, 30_000);
 });

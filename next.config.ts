@@ -51,8 +51,20 @@ const securityHeaders = [
   { key: "Cache-Control", value: "no-store" },
 ];
 
+/**
+ * Every API route answers in JSON, and declaring that here is also what
+ * lets the server's gzip reach the API. The compression step reads the
+ * Content-Type to decide, and Next.js copies a route handler's own headers
+ * onto the response as lists, which it skips — so without this rule an
+ * analysis (tens to hundreds of kilobytes of JSON) would go out raw.
+ */
+const apiHeaders = [...securityHeaders, { key: "Content-Type", value: "application/json; charset=utf-8" }];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The server gzips pages, scripts and API JSON alike; no route compresses
+  // its own output. (The default, stated because the API relies on it.)
+  compress: true,
   // Self-contained server bundle for the container image (Cloud Run). Other
   // hosts such as Vercel ignore this and use their own output.
   output: "standalone",
@@ -62,7 +74,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        headers: securityHeaders,
+        headers: apiHeaders,
       },
       {
         source: "/:path*",

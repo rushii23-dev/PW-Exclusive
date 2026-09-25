@@ -3,7 +3,14 @@ import { z } from "zod";
 
 import { generateContent } from "./mock-gemini";
 
-import { classifyFailure, generateJson, modelChain, resetGeminiClient } from "@/lib/ai/gemini";
+import {
+  classifyFailure,
+  generateJson,
+  modelChain,
+  resetGeminiClient,
+  SAFETY_SETTINGS,
+  transcribeDocument,
+} from "@/lib/ai/gemini";
 
 const request = {
   feature: "test",
@@ -130,6 +137,38 @@ describe("generateJson resilience", () => {
 
   it("defaults to a fast Flash-Lite model", () => {
     expect(modelChain()[0]).toMatch(/flash-lite/);
+  });
+});
+
+describe("safety settings", () => {
+  it("block the four harm categories from medium probability up on every call", async () => {
+    generateContent.mockImplementation(async () => ({ text: '{"ok":true}', candidates: [] }));
+    await generateJson(request);
+    const [req] = generateContent.mock.calls[0] as unknown as [
+      { config: { safetySettings: Array<{ category: string; threshold: string }> } },
+    ];
+    expect(req.config.safetySettings.map((s) => s.category).sort()).toEqual([
+      "HARM_CATEGORY_DANGEROUS_CONTENT",
+      "HARM_CATEGORY_HARASSMENT",
+      "HARM_CATEGORY_HATE_SPEECH",
+      "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+    ]);
+    expect(new Set(req.config.safetySettings.map((s) => s.threshold))).toEqual(new Set(["BLOCK_MEDIUM_AND_ABOVE"]));
+  });
+
+  it("apply to transcription as well", async () => {
+    generateContent.mockImplementation(async () => ({ text: "1. RENT\nThe tenant pays rent.", candidates: [] }));
+    await transcribeDocument({ mimeType: "image/png", data: new Uint8Array([1, 2, 3]) });
+    const [req] = generateContent.mock.calls[0] as unknown as [{ config: { safetySettings: unknown[] } }];
+    expect(req.config.safetySettings).toBe(SAFETY_SETTINGS);
+  });
+
+  it("turn a withheld reply into null, so the rule engine answers instead", async () => {
+    // A blocked candidate comes back with no text.
+    generateContent.mockImplementation(async () => ({ text: "", candidates: [] }));
+    expect(await generateJson(request)).toBeNull();
+    // A block is an answer, not an outage: no other model is asked.
+    expect(generateContent).toHaveBeenCalledTimes(1);
   });
 });
 

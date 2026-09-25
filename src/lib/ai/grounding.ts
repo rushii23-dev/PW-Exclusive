@@ -56,11 +56,20 @@ export function normaliseForMatch(text: string): string {
     .toLowerCase();
 }
 
+/** The clause as quotes are matched against it: heading and text, normalised. */
+function matchableText(clause: Clause): string {
+  return normaliseForMatch(`${clause.heading ?? ""} ${clause.text}`);
+}
+
+/** Whether `quote` appears in already-normalised clause text, and is long enough to mean something. */
+function quotedIn(quote: string, clauseText: string): boolean {
+  const q = normaliseForMatch(quote).replace(/^\.{3}|\.{3}$/g, "").trim();
+  return q.length >= 8 && clauseText.includes(q);
+}
+
 /** A quote counts only if it is really in the clause and long enough to mean something. */
 export function isVerbatimQuote(quote: string, clause: Clause): boolean {
-  const q = normaliseForMatch(quote).replace(/^\.{3}|\.{3}$/g, "").trim();
-  if (q.length < 8) return false;
-  return normaliseForMatch(`${clause.heading ?? ""} ${clause.text}`).includes(q);
+  return quotedIn(quote, matchableText(clause));
 }
 
 /**
@@ -113,11 +122,19 @@ export function verifyCitations(
   clauses: Clause[],
 ): VerifiedCitation[] {
   const byId = new Map(clauses.map((c) => [c.id, c]));
+  // A clause cited by several quotes is normalised once, not once per quote.
+  const matchable = new Map<Clause, string>();
   const seen = new Set<string>();
   const out: VerifiedCitation[] = [];
   for (const cite of citations) {
     const clause = byId.get(cite.clauseId.trim());
-    if (!clause || !isVerbatimQuote(cite.quote, clause)) continue;
+    if (!clause) continue;
+    let text = matchable.get(clause);
+    if (text === undefined) {
+      text = matchableText(clause);
+      matchable.set(clause, text);
+    }
+    if (!quotedIn(cite.quote, text)) continue;
     const key = `${clause.id}::${normaliseForMatch(cite.quote)}`;
     if (seen.has(key)) continue;
     seen.add(key);

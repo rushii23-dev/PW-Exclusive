@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { POST as analyzePost } from "@/app/api/analyze/route";
 import { POST as askPost } from "@/app/api/ask/route";
 import { POST as comparePost } from "@/app/api/compare/route";
+import * as catchAll from "@/app/api/[...path]/route";
 import { GET as healthGet } from "@/app/api/health/route";
 import { resetRateLimits } from "@/lib/server/rate-limit";
 import { NDA, RENTAL_AGREEMENT } from "@/lib/samples";
@@ -120,5 +121,21 @@ describe("POST /api/ask", () => {
       post("/api/ask", { text: RENTAL_AGREEMENT, question: "why? ".repeat(200) }),
     );
     expect(res.status).toBe(422);
+  });
+});
+
+describe("an /api address that is not a route", () => {
+  it.each([
+    ["GET", catchAll.GET],
+    ["POST", catchAll.POST],
+    ["PUT", catchAll.PUT],
+    ["PATCH", catchAll.PATCH],
+    ["DELETE", catchAll.DELETE],
+  ])("answers %s with a JSON 404 in the usual error shape", async (_, handler) => {
+    const res = handler();
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({
+      error: { code: "not_found", message: "There is no API endpoint at this address." },
+    });
   });
 });

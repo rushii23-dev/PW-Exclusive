@@ -5,17 +5,20 @@
  * document gives them, what each costs, and next steps, with every option
  * backed by verified quotes. Without Gemini, the engine returns the clauses
  * that deal with the situation and the steps it derived from their flags.
+ *
+ * Like a question, a situation is worked through from the clauses alone.
  */
 
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { isAiConfigured } from "@/lib/ai/gemini";
 import { aiSituationGuide, engineSituationGuide } from "@/lib/ai/options";
-import { ClauseIndex } from "@/lib/engine";
+import { ClauseIndex, readClauses } from "@/lib/engine";
 import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
-import { analyzeOrError } from "@/lib/server/analysis";
+import { runEngine } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
+import { guardRequest, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,17 +42,18 @@ export async function POST(request: Request) {
   const body = await parseBody(request, schema);
   if (!body.ok) return body.response;
 
-  const result = analyzeOrError(body.data.text, {
+  const result = runEngine(() => readClauses(body.data.text), {
     code: "options_failed",
     message: "Could not work through that situation.",
   });
   if (!result.ok) return result.response;
 
   const { situation, language } = body.data;
-  const index = new ClauseIndex(result.analysis.clauses);
+  const doc = result.value;
+  const index = new ClauseIndex(doc.clauses);
   const guide =
-    (isAiConfigured() ? await aiSituationGuide(result.analysis, situation, language, index, request.signal) : null) ??
-    engineSituationGuide(result.analysis, situation, index);
+    (isAiConfigured() ? await aiSituationGuide(doc, situation, language, index, request.signal) : null) ??
+    engineSituationGuide(doc, situation, index);
 
-  return jsonResponse(request, { guide });
+  return NextResponse.json({ guide });
 }

@@ -43,3 +43,14 @@ describe("security headers", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });
 });
+
+describe("response compression", () => {
+  it("is left to the server, which gzips pages and API JSON alike", () => {
+    expect(nextConfig.compress).toBe(true);
+  });
+
+  it("declares the API's JSON type as a plain header, which is what the server's gzip reads", async () => {
+    expect((await headersFor("/api/:path*")).get("content-type")).toBe("application/json; charset=utf-8");
+    expect((await headersFor("/:path*")).has("content-type")).toBe(false);
+  });
+});
