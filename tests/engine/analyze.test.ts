@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  analyzeClause,
   analyzeDocument,
   DocumentTooLargeError,
   DocumentTooSmallError,
@@ -191,6 +192,32 @@ describe("obligations on both sides", () => {
     expect(text).toContain("WHAT THE OTHER SIDE MUST DO");
     expect(text).toContain("KEY AMOUNTS, DATES AND PERIODS");
     expect(text).toContain("USD 4,000");
+  });
+});
+
+describe("analyzeClause", () => {
+  it("reads every clause of every sample exactly as the full analysis does", () => {
+    for (const sample of SAMPLES) {
+      const full = analyzeDocument(sample.text);
+      for (const clause of full.clauses) {
+        expect(analyzeClause(sample.text, clause.id)).toEqual({
+          documentTypeLabel: full.documentTypeLabel,
+          clause,
+        });
+      }
+    }
+  });
+
+  it("returns null for a clause the document doesn't have", () => {
+    const count = analyzeDocument(RENTAL_AGREEMENT).clauses.length;
+    for (const id of ["clause-0", `clause-${count + 1}`, "clause-999", "clause-", "nope"]) {
+      expect(analyzeClause(RENTAL_AGREEMENT, id)).toBeNull();
+    }
+  });
+
+  it("enforces the same bounds as a full analysis", () => {
+    expect(() => analyzeClause("hello", "clause-1")).toThrow(DocumentTooSmallError);
+    expect(() => analyzeClause("a ".repeat(MAX_DOCUMENT_CHARS), "clause-1")).toThrow(DocumentTooLargeError);
   });
 });
 
