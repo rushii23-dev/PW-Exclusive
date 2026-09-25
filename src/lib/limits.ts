@@ -6,7 +6,7 @@
  * Client-safe: plain constants, no server imports.
  */
 
-export { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "@/lib/engine";
+export { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "@/lib/engine/client";
 
 /** Fits comfortably under common serverless request limits. */
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
