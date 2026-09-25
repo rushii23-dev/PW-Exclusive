@@ -13,7 +13,7 @@ import type { CompareVerdict } from "@/lib/ai/compare";
 import type { LanguageCode } from "@/lib/ai/languages";
 import { postJson } from "@/lib/client/api";
 import { revealAndFocus, useLatestRequest } from "@/lib/client/hooks";
-import { formatCount, type Analysis, type Comparison } from "@/lib/engine";
+import { formatCount, type Analysis, type Comparison } from "@/lib/engine/client";
 import { MAX_DOCUMENT_CHARS } from "@/lib/limits";
 import { SAMPLES } from "@/lib/samples";
 import { cn } from "@/lib/utils";
