@@ -65,7 +65,7 @@ const schema = {
 };
 
 export async function explainClause(
-  analysis: Analysis,
+  analysis: Pick<Analysis, "documentTypeLabel">,
   clause: Clause,
   language: LanguageCode,
   signal?: AbortSignal,
