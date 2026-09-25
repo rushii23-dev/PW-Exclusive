@@ -9,12 +9,18 @@
 
 import "server-only";
 
+import { promisify } from "node:util";
+import { brotliCompress, constants as zlib, gzip } from "node:zlib";
+
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
 
 import { MAX_DOCUMENT_CHARS } from "@/lib/engine";
 
 import { checkRateLimit } from "./rate-limit";
+
+const brotliAsync = promisify(brotliCompress);
+const gzipAsync = promisify(gzip);
 
 /** UTF-8 spends at most three bytes on any character a document can hold. */
 const MAX_BYTES_PER_CHAR = 3;
@@ -41,6 +47,61 @@ export function errorResponse(
   headers?: Record<string, string>,
 ): NextResponse<ApiError> {
   return NextResponse.json({ error: { code, message } }, { status, headers });
+}
+
+/** Below this size, compressing costs more time than it saves bytes. */
+const COMPRESS_MIN_BYTES = 1024;
+
+/**
+ * Quality 4 of 11: within a few percent of brotli's best ratio on analysis
+ * JSON, in a fraction of the time — about 11 ms for the largest analysis.
+ */
+const BROTLI_OPTIONS = {
+  params: {
+    [zlib.BROTLI_PARAM_QUALITY]: 4,
+    [zlib.BROTLI_PARAM_MODE]: zlib.BROTLI_MODE_TEXT,
+  },
+};
+
+/** Content codings the client accepts; one it lists with q=0 it refuses. */
+function acceptedEncodings(request: Request): Set<string> {
+  const accepted = new Set<string>();
+  for (const part of (request.headers.get("accept-encoding") ?? "").split(",")) {
+    const [coding, ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    const q = params.find((p) => p.startsWith("q="));
+    if (coding && (q === undefined || Number(q.slice(2)) > 0)) accepted.add(coding);
+  }
+  return accepted;
+}
+
+/**
+ * A JSON response, compressed when the client accepts it.
+ *
+ * Next.js compresses pages but not route-handler responses, and an analysis
+ * is large: every clause with its flags, explanations and quotes comes to
+ * about ten times the size of the document itself. The sample lease's
+ * analysis is 29 KB of JSON and 5 KB on the wire. Longer documents gain more,
+ * since the same flag explanations repeat from clause to clause and brotli's
+ * long window folds them away: the maximum-size test contract's 1.1 MB goes
+ * out as 27 KB. Compression runs on the libuv thread pool, so a large body
+ * never holds up other requests.
+ *
+ * No secret ever sits in these bodies (no token, cookie or key), so
+ * compressing them next to reader-supplied text gives a BREACH-style length
+ * attack nothing to recover.
+ */
+export async function jsonResponse(request: Request, body: unknown): Promise<Response> {
+  const json = JSON.stringify(body);
+  const headers = new Headers({ "content-type": "application/json", vary: "accept-encoding" });
+  if (Buffer.byteLength(json) < COMPRESS_MIN_BYTES) return new Response(json, { headers });
+
+  const accepted = acceptedEncodings(request);
+  const coding = accepted.has("br") ? "br" : accepted.has("gzip") ? "gzip" : null;
+  if (!coding) return new Response(json, { headers });
+
+  const compressed = coding === "br" ? await brotliAsync(json, BROTLI_OPTIONS) : await gzipAsync(json);
+  headers.set("content-encoding", coding);
+  return new Response(compressed, { headers });
 }
 
 /** Longest address we key on; anything longer is not an IP address. */
