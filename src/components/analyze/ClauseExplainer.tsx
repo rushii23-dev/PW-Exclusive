@@ -3,7 +3,8 @@
 /**
  * On-demand deep explanation of one clause, written by Gemini in the
  * reader's language. Fetched only when asked for — most clauses never need
- * it, and each explanation is a model call.
+ * it, and each explanation is a model call — and only once: asking again
+ * (say, after filtering the clause list) shows the one already written.
  */
 
 import { Check, ClipboardCopy, HelpCircle, Loader2, PenLine, Sparkles, TriangleAlert } from "lucide-react";
@@ -13,11 +14,10 @@ import { useAi } from "@/components/ai/AiContext";
 import { GeminiBadge } from "@/components/ai/GeminiBadge";
 import type { ClauseExplanation } from "@/lib/ai/explain";
 import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
-import { postJson } from "@/lib/client/api";
 import { useCopy, useLatestRequest } from "@/lib/client/hooks";
 
 export function ClauseExplainer({ clauseId }: { clauseId: string }) {
-  const { configured, documentText, language } = useAi();
+  const { configured, session, language } = useAi();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ explanation: ClauseExplanation; language: LanguageCode } | null>(null);
@@ -38,11 +38,7 @@ export function ClauseExplainer({ clauseId }: { clauseId: string }) {
     setPending(true);
     setError(null);
     const asked = language;
-    const response = await postJson<{ explanation: ClauseExplanation }>(
-      "/api/explain",
-      { text: documentText, clauseId, language: asked },
-      { signal: nextSignal() },
-    );
+    const response = await session.explain(clauseId, asked, nextSignal());
     if (!response.ok && response.aborted) return;
     setPending(false);
     if (response.ok) setResult({ explanation: response.data.explanation, language: asked });
