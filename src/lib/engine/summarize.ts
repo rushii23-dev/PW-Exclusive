@@ -6,7 +6,7 @@
  * wrong only if the extraction was wrong, and the extraction is testable.
  */
 
-import { formatCount } from "./text";
+import { formatCount } from "./format";
 import type {
   Clause,
   DocumentType,

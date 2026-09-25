@@ -10,6 +10,7 @@ import { MAX_DOCUMENT_CHARS, MIN_DOCUMENT_CHARS } from "./bounds";
 import { buildChecklist, buildLawyerQuestions } from "./checklist";
 import { classifyClause } from "./classify";
 import { extractEntities } from "./entities";
+import { formatCount } from "./format";
 import { findJargon } from "./glossary";
 import { findInconsistencies } from "./inconsistencies";
 import { extractObligations } from "./obligations";
@@ -17,7 +18,6 @@ import { computeReadability } from "./readability";
 import { byLevelDesc } from "./risk";
 import { segment } from "./segment";
 import { composeSummary, detectDocumentType } from "./summarize";
-import { formatCount } from "./text";
 import type {
   Analysis,
   Clause,
