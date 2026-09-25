@@ -3,8 +3,9 @@
 /**
  * What every AI-aware component needs to know: whether Gemini is configured
  * on this server, which language the reader wants explanations in, and the
- * document the questions are about. Held in context so a clause card deep
- * in a tab can call the API without threading props through every layer.
+ * session for the document the questions are about. Held in context so a
+ * clause card deep in a tab can call the API without threading props
+ * through every layer.
  */
 
 import {
@@ -29,7 +30,6 @@ export interface AiStatus {
 interface AiContextValue extends AiStatus {
   language: LanguageCode;
   setLanguage: (code: LanguageCode) => void;
-  documentText: string;
   /** Requests about the analysed document, each answer fetched only once. */
   session: DocumentSession;
 }
@@ -105,8 +105,8 @@ export function AiProvider({
   const { configured, model } = status;
   const session = useMemo(() => new DocumentSession(documentText, Boolean(configured)), [documentText, configured]);
   const value = useMemo<AiContextValue>(
-    () => ({ configured, model, language, setLanguage, documentText, session }),
-    [configured, model, language, setLanguage, documentText, session],
+    () => ({ configured, model, language, setLanguage, session }),
+    [configured, model, language, setLanguage, session],
   );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }
