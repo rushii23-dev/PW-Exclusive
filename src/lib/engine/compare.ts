@@ -8,7 +8,7 @@
  * analyses, so compare can never disagree with analyze.
  */
 
-import { CATEGORY_LABELS } from "./lexicon";
+import { CATEGORY_LABELS } from "./categories";
 import { LEVEL_ORDER, worseLevel } from "./risk";
 import type { Analysis, ClauseCategory, RiskFinding, RiskLevel } from "./types";
 

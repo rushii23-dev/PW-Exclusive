@@ -19,7 +19,7 @@ export type { RetrievalHit } from "./retrieve";
 export { findInconsistencies } from "./inconsistencies";
 export { toPlainText } from "./checklist";
 export { formatCount } from "./format";
-export { CATEGORY_LABELS } from "./lexicon";
+export { CATEGORY_LABELS } from "./categories";
 export { GLOSSARY } from "./glossary";
 export type { GlossaryEntry } from "./glossary";
 export type {
