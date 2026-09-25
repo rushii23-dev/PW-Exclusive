@@ -15,7 +15,7 @@ import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 import type { SituationGuide } from "@/lib/ai/options";
 import { postJson } from "@/lib/client/api";
 import { useLatestRequest } from "@/lib/client/hooks";
-import type { DocumentType } from "@/lib/engine";
+import type { DocumentType } from "@/lib/engine/client";
 import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
 import { cn } from "@/lib/utils";
 

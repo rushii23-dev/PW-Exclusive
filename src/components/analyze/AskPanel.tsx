@@ -15,7 +15,7 @@ import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
 import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
 import { postJson } from "@/lib/client/api";
 import { prefersReducedMotion, useLatestRequest } from "@/lib/client/hooks";
-import type { Answer } from "@/lib/engine";
+import type { Answer } from "@/lib/engine/client";
 import { QUESTION_MAX_CHARS, QUESTION_MIN_CHARS } from "@/lib/limits";
 
 interface Exchange {

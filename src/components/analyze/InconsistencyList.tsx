@@ -2,7 +2,7 @@ import { GitCompareArrows, Quote } from "lucide-react";
 
 import { EngineBadge, GeminiBadge } from "@/components/ai/GeminiBadge";
 import { languageAttributes, type LanguageCode } from "@/lib/ai/languages";
-import type { Inconsistency } from "@/lib/engine";
+import type { Inconsistency } from "@/lib/engine/client";
 
 /**
  * Places where the document disagrees with itself. Each one quotes every
