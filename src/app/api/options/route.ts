@@ -7,7 +7,6 @@
  * that deal with the situation and the steps it derived from their flags.
  */
 
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { isAiConfigured } from "@/lib/ai/gemini";
@@ -16,7 +15,7 @@ import { ClauseIndex } from "@/lib/engine";
 import { SITUATION_MAX_CHARS, SITUATION_MIN_CHARS } from "@/lib/limits";
 import { analyzeOrError } from "@/lib/server/analysis";
 import { documentField, languageField } from "@/lib/server/fields";
-import { guardRequest, parseBody } from "@/lib/server/http";
+import { guardRequest, jsonResponse, parseBody } from "@/lib/server/http";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -52,5 +51,5 @@ export async function POST(request: Request) {
     (isAiConfigured() ? await aiSituationGuide(result.analysis, situation, language, index, request.signal) : null) ??
     engineSituationGuide(result.analysis, situation, index);
 
-  return NextResponse.json({ guide });
+  return jsonResponse(request, { guide });
 }
